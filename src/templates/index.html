@@ -1,0 +1,154 @@
+<html>
+<head>
+   <title>File browser</title>
+
+<style>
+h1 {font-size: 16px;}
+h2 {font-size: 14px;}
+thead {font-size: 14px;}
+td {padding: 4px;}
+.error {background-color: red; color: black; font-weight: bold; border-radius: 4px; border: solid red 1px;}
+.message {background-color: orange; border-radius: 4px;}
+</style>
+
+<script>
+   let store = {fdata: []};
+   let cmp_fdata_fn;
+   {% for fname, fmimetype, fsize, fmtime, fimgtime, fdeleted, fthumb in file_list  %}store.fdata.push({fname: "{{fname}}",
+              fmimetype: "{{fmimetype}}",
+              fsize: {{fsize}},
+              fmtime: "{{fmtime}}",
+              fimgtime: "{{fimgtime}}",
+              fdeleted: "{{fdeleted}}"=="True",
+              thumbnail: "{{fthumb}}"});
+   {% endfor %}
+
+   // -------------------------------------------
+   // UI helper fns
+
+   function del_all_children(ui_ele) {
+      while (ui_ele.firstChild) {
+            ui_ele.removeChild(ui_ele.lastChild);
+      }
+   }
+
+   // -------------------------------------------
+   // fdata cmp fns
+
+   function cmp_fdata_ele_imgtime_asc(ele1, ele2) {
+      return ele1.fimgtime > ele2.fimgtime;
+   }
+
+   function cmp_fdata_ele_imgtime_desc(ele1, ele2) {
+      return !cmp_fdata_ele_imgtime_asc(ele1, ele2);
+   }
+
+   cmp_fdata_fn = cmp_fdata_ele_imgtime_desc;
+
+   // -------------------------------------------
+   // fdata util fns
+   function extract_date(date_time) {
+      // Sample input: 2022:01:03 20:19:03-08:00
+      let dt_tm = date_time.split(" ");
+      return dt_tm[0];
+   }
+
+   // -------------------------------------------
+   // UI fns
+   function ui_div(txt) {
+      let node = document.createElement("div");
+      node.appendChild(ui_text_node(txt));
+      return node;
+   }
+
+   function ui_br() {
+      return document.createElement("br");
+   }
+
+   function ui_text_node(txt) {
+      let node = document.createTextNode(txt);
+      return node;
+   }
+
+   function refresh_tab_file_list() {
+      store.fdata.sort(cmp_fdata_fn);
+
+      let table = document.getElementById("tab_file_list");
+      del_all_children(table);
+
+      for (const ele of store.fdata) {
+         let tr = document.createElement("tr");
+         let td;
+
+         td = document.createElement("td");
+         td.style = "text-align: center";
+         let thumb;
+         if (ele.thumbnail[0] == "@") {
+            thumb = ui_div(ele.thumbnail.substr(2, 6).toLowerCase());
+         } else {
+            thumb = document.createElement("img");
+            thumb.src = ele.thumbnail;
+         }
+         td.appendChild(thumb);
+         tr.appendChild(td);
+
+         td = document.createElement("td");
+         td.appendChild(ui_div(ele.fname));
+         td.appendChild(ui_div(extract_date(ele.fimgtime)));
+         td.appendChild(ui_div(ele.fsize + " Bytes"));
+         tr.appendChild(td);
+
+         table.appendChild(tr);
+      }
+   }
+</script>
+</head>
+
+<body onload="refresh_tab_file_list();">
+   <table width=100% border=0px> <!-- top bar -->
+      <tr>
+         <td><h1>File Browser</h1></td>
+         <td align=right> <!-- upload pane -->
+            <form method="POST" enctype="multipart/form-data" action="/upload">
+               <input type="file" name="files" multiple="">
+               <input type="submit" value="Upload">
+            </form>
+         </td>
+      </tr>
+   </table>
+
+   {% if error %}
+   <p class="error">{{error}}</p>
+   {% endif %}
+
+   {% if message %}
+   <p class="message">{{message}}</p>
+   {% endif %}
+
+   {% if failed_uploads %}
+   <h2 class="error">Failed to upload ({{failed_upload_count}}) files</h2>
+   <ul>
+      {% for filename in failed_uploads %}
+         <li>{{filename}}</li>
+      {% endfor %}
+   </ul>
+   {% endif %}
+
+   <!-- file listing -->
+   <table width="100%" id="tab_file_list">
+   </table>
+
+   <hr>
+
+   {% if uploaded_files %}
+   <h2>Uploaded</h2>
+   {% endif %}
+   <ul>
+   {% for filename in uploaded_files %}
+      <li>{{filename}}</li>
+   {% endfor %}
+   </ul>
+
+
+</body>
+</html>

@@ -30,7 +30,9 @@ def page(uploaded_files=[], failed_uploads=[],
              fd.exif['FileModifyDate'],
              fd.exif_img_create_date,
              fd.deleted,
-            ) for fd in file_data]
+             (fd.thumbnail and fd.thumbnail[1:]) or ("@" + os.path.splitext(fd.fname)[-1]), # thumbnail file or "@." + file extension
+            ) for fd in file_data
+            if not fd.deleted]
 
     return render_template("index.html",
             file_list=sorted(file_data),
@@ -53,28 +55,29 @@ def upload():
     failed_uploads = []
 
     store = Store()
-    existing_fnames = {fd.fname for fd in store.get_db_data()}
 
     uploaded_files = request.files.getlist("files")
     for uploaded_file in uploaded_files:
         filename = secure_filename(uploaded_file.filename)
 
-        if filename in existing_fnames:
-            print("Duplicate detected", uploaded_file, filename)
-            failed_uploads.append(filename)
+        db_row = store.get_db_data_fname(filename)
 
-        else:
-            print("Uploaded:", uploaded_file, filename)
-            local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not db_row or db_row.deleted:
+            print("Uploaded:", uploaded_file, "->", filename)
+            local_path = os.path.join(Config.upload_dir, filename)
             uploaded_file.save(local_path)
             store.process(local_path)
             success_files.append(filename)
+
+        else:
+            print("Duplicate detected", uploaded_file, filename)
+            failed_uploads.append(filename)
 
     return page(
             uploaded_files=success_files,
             failed_uploads=failed_uploads)
 
-@app.route("/thumbnail/<fname>")
+@app.route("/thumbnails/<fname>")
 def thumbnail(fname):
     thumb_file = os.path.join(Config.thumbnail_dir, fname)
     if os.path.exists(thumb_file):

@@ -77,7 +77,9 @@ class Store():
         # try creating a thumbnail
         try:
             cmd = ["convert", path, "-resize", str(size), thumbnail_path]
-            subprocess.call(cmd)
+            result = subprocess.call(cmd)
+            if result:
+                return None
         except Exception as exc:
             return None
 
@@ -202,6 +204,12 @@ class Store():
     def get_db_data(self):
         data = self.metadata.get('*')
         return data
+
+    def get_db_data_fname(self, fname):
+        data = self.metadata.get('*', {"fname": fname})
+        if data:
+            return data[0]
+        return None
 
 def update_metadata(files):
     with store.batch():

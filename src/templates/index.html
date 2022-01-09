@@ -76,7 +76,10 @@ td {padding: 4px;}
       let table = document.getElementById("tab_file_list");
       del_all_children(table);
 
+      let count = 0;
       for (const ele of store.fdata) {
+         ++count;
+
          let tr = document.createElement("tr");
          let td;
 
@@ -100,6 +103,14 @@ td {padding: 4px;}
 
          table.appendChild(tr);
       }
+
+      let ui_filecount = document.getElementById("ui_filecount");
+      del_all_children(ui_filecount);
+      ui_filecount.appendChild(ui_div(count + " files"));
+
+      let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
+      del_all_children(ui_upload_dir_du);
+      ui_upload_dir_du.appendChild(ui_div("{{upload_dir_du}}"));
    }
 </script>
 </head>
@@ -133,6 +144,14 @@ td {padding: 4px;}
       {% endfor %}
    </ul>
    {% endif %}
+
+   <!-- Bar above file listing -->
+   <table>
+      <tr>
+         <td id="ui_upload_dir_du"></td>
+         <td id="ui_filecount"></td>
+      </tr>
+   </table>
 
    <!-- file listing -->
    <table width="100%" id="tab_file_list">

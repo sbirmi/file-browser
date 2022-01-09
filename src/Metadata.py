@@ -6,7 +6,7 @@ import subprocess
 
 from HashLib import hash_sha256
 
-from Config import thumbnail_dir
+import Config
 from Storage import (
         Bool,
         Int,
@@ -59,6 +59,14 @@ class Store():
         self.commit()
 
     @staticmethod
+    def upload_dir_disk_usage():
+        cmd = ["du", "-sh", Config.upload_dir]
+        output = subprocess.check_output(cmd)
+        # Sample output
+        # 4.4G    uploads/
+        return output.split()[0].decode("utf-8")
+
+    @staticmethod
     def samefile(path, fname, exif, existing_data):
         if not existing_data and not exif:
             return True
@@ -73,7 +81,7 @@ class Store():
 
     @staticmethod
     def thumbnail(path, fname, size=240):
-        thumbnail_path = os.path.join(thumbnail_dir, fname)
+        thumbnail_path = os.path.join(Config.thumbnail_dir, fname)
         # try creating a thumbnail
         try:
             cmd = ["convert", path, "-resize", str(size), thumbnail_path]
@@ -220,4 +228,5 @@ if __name__ == "__main__":
     import sys
     store = Store()
     #store.get_db_data()
-    update_metadata(sys.argv[1:])
+    #update_metadata(sys.argv[1:])
+    print(Store.upload_dir_disk_usage())

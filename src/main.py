@@ -35,6 +35,7 @@ def page(uploaded_files=[], failed_uploads=[],
             if not fd.deleted]
 
     return render_template("index.html",
+            upload_dir_du=Store.upload_dir_disk_usage(),
             file_list=sorted(file_data),
             error=error,
             message=message,
@@ -55,12 +56,13 @@ def upload():
     failed_uploads = []
 
     store = Store()
+    db_all_data = {fd.fname: fd for fd in store.get_db_data()}
 
     uploaded_files = request.files.getlist("files")
     for uploaded_file in uploaded_files:
         filename = secure_filename(uploaded_file.filename)
 
-        db_row = store.get_db_data_fname(filename)
+        db_row = db_all_data.get(filename)
 
         if not db_row or db_row.deleted:
             print("Uploaded:", uploaded_file, "->", filename)

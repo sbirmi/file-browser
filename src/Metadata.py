@@ -17,6 +17,7 @@ from Storage import (
         Txt,
 )
 from Utils import (
+        check_output,
         now,
         run,
         trace,
@@ -90,16 +91,42 @@ class Store():
     @staticmethod
     def video_frame(path):
         tmppath = tempfile.mktemp()
-        cmd = ["ffmpeg", "-i", path, "-r", "1", "-t", "00:00:01", "-f", "image2", tmppath]
+        cmd = ["ffmpeg", "-i", path, "-r", "1", "-v", "quiet", "-t", "00:00:01", "-f", "image2", tmppath]
         result = run(cmd)
         if result is None:
             return None
         return tmppath
 
     @staticmethod
-    def resize_image(srcpath, dstpath, size):
+    def video_duration(path):
+        cmd = ["ffprobe", "-i", path, "-show_entries", "format=duration", "-v", "quiet", "-of", 'csv=p=0']
+        output = check_output(cmd)
+        # Sample output: '10.508333\n'
+        if not output:
+            return None
+        text = output.split()[0]
+        if "." in text:
+            tokens = text.split(".")
+            text = tokens[0] + "." + tokens[1][:2] # keep 2 decimal places
+        return text
+
+    @staticmethod
+    def resize_image(srcpath, dstpath, size, text=None):
         cmd = ["convert", srcpath, "-resize",
-               "{}x{}".format(size, size), dstpath]
+               "{}x{}".format(size, size)]
+        if text:
+            cmd += ["-font", "helvetica",
+                    "-fill", "gray",
+                    "-pointsize", "20",
+                    "-gravity", "South",
+                    "-draw", "text 12,8 '%s'" % text]
+            cmd += ["-font", "helvetica",
+                    "-fill", "white",
+                    "-pointsize", "20",
+                    "-gravity", "South",
+                    "-draw", "text 10,10 '%s'" % text]
+#            cmd += ["-gravity", "Center", "-pointsize", "12", "-annotate", "0", text]
+        cmd += [dstpath]
         result = run(cmd)
         if result is None:
             return None
@@ -119,7 +146,8 @@ class Store():
 
         elif "video" in mime_type:
             tmpframe = Store.video_frame(path)
-            return Store.resize_image(tmpframe, thumbnail_path, size)
+            duration = Store.video_duration(path)
+            return Store.resize_image(tmpframe, thumbnail_path, size, text=duration)
 
         return None
 

@@ -100,10 +100,18 @@ def duplicate_check():
         
         process_possible_duplicates(matches)
 
-def update_thumbnails():
-    all_data = store.get_db_data(deleted=False)
+def update_thumbnails(fnames):
+    def get_data(fnames):
+        if fnames:
+            for fname in fnames:
+                yield store.get_db_data_fname(fname)
+        else:
+            all_data = store.get_db_data(deleted=False)
+            for item in all_data:
+                yield item
+
     with store.batch():
-        for entry in all_data:
+        for entry in get_data(fnames):
             old_thumbnail_path = entry.thumbnail
             thumbnail_path = Store.thumbnail(Config.upload_path(entry.fname), entry.fname)
             if old_thumbnail_path != thumbnail_path and old_thumbnail_path:
@@ -116,10 +124,14 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("-t", "--update-thumbnails",
                         action="store_true")
+    parser.add_argument("paths", nargs="*")
     args = parser.parse_args()
 
+    fnames = [os.path.split(path)[1] for path in args.paths]
+
     if args.duplicate_check:
+        assert not args.paths
         duplicate_check()
 
     if args.update_thumbnails:
-        update_thumbnails()
+        update_thumbnails(fnames)

@@ -25,4 +25,10 @@ def run(cmd):
         result = subprocess.call(cmd)
     except Exception as exc:
         return None
-    return result
+    return True
+
+def check_output(cmd):
+    try:
+        return subprocess.check_output(cmd).decode("utf8")
+    except:
+        return None

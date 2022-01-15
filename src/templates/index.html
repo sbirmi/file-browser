@@ -61,6 +61,15 @@ td {padding: 4px;}
 
    // -------------------------------------------
    // UI fns
+   function ui_link(url, cls=null) {
+      let node = document.createElement("a");
+      node.href = url;
+      if (cls) {
+         node.classList.add(cls);
+      }
+      return node;
+   }
+
    function ui_img(url, tooltip, cls=null) {
       let img = document.createElement("img");
       img.src = url;
@@ -122,7 +131,9 @@ td {padding: 4px;}
          } else {
             content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.fsize + " bytes");
          }
-         let thumb = ui_div(content, cls="ui_tile");
+         let link = ui_link("/get/" + ele.fname);
+         link.appendChild(content);
+         let thumb = ui_div(link, cls="ui_tile");
          cur_date_div.appendChild(thumb);
       }
 

@@ -81,8 +81,18 @@ def upload():
 
 @app.route("/thumbnails/<fname>")
 def thumbnail(fname):
+    store = Store()
     thumb_file = os.path.join(Config.thumbnail_dir, fname)
-    if os.path.exists(thumb_file):
+    if store.get_db_data_fname(fname) and os.path.exists(thumb_file):
         return send_file(thumb_file, mimetype="image")
+
+    return "404"
+
+@app.route("/get/<fname>")
+def get_file(fname):
+    store = Store()
+    upload_file = os.path.join(Config.upload_dir, fname)
+    if store.get_db_data_fname(fname) and os.path.exists(upload_file):
+        return send_file(upload_file)#, mimetype="image")
 
     return "404"

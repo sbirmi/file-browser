@@ -210,8 +210,11 @@ class Store():
     # -------------------------------------------
     # Fetching metadata
 
-    def get_db_data(self):
-        data = self.metadata.get('*')
+    def get_db_data(self, deleted=None):
+        where = {}
+        if deleted is not None:
+            where["deleted"] = deleted
+        data = self.metadata.get('*', where=where)
         return data
 
     def get_db_data_fname(self, fname):

@@ -128,7 +128,7 @@ td {padding: 4px;}
 
       let ui_filecount = document.getElementById("ui_filecount");
       del_all_children(ui_filecount);
-      ui_filecount.appendChild(ui_div(ui_text(count + " files")));
+      ui_filecount.appendChild(ui_div(ui_text(store.fdata.length + " files")));
 
       let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
       del_all_children(ui_upload_dir_du);

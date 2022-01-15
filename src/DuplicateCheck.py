@@ -75,7 +75,7 @@ def process_possible_duplicates(matches):
 
 
 if __name__ == "__main__":
-    all_data = store.get_db_data(skip_deleted=True)
+    all_data = store.get_db_data(deleted=False)
 
     grouped_data = defaultdict(list)
 

@@ -21,7 +21,7 @@ def page(uploaded_files=[], failed_uploads=[],
     udir = app.config["UPLOAD_FOLDER"]
 
     store = Store()
-    file_data = store.get_db_data()
+    file_data = store.get_db_data(deleted=False)
 
     file_data = [
             (fd.fname,
@@ -36,7 +36,7 @@ def page(uploaded_files=[], failed_uploads=[],
 
     return render_template("index.html",
             upload_dir_du=Store.upload_dir_disk_usage(),
-            file_list=sorted(file_data),
+            file_list=file_data,
             error=error,
             message=message,
             failed_uploads=failed_uploads,

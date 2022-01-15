@@ -84,7 +84,8 @@ class Store():
         thumbnail_path = os.path.join(Config.thumbnail_dir, fname)
         # try creating a thumbnail
         try:
-            cmd = ["convert", path, "-resize", str(size), thumbnail_path]
+            cmd = ["convert", path, "-resize",
+                   "{}x{}".format(size, size), thumbnail_path]
             result = subprocess.call(cmd)
             if result:
                 return None

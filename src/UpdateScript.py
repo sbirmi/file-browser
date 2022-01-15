@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 from collections import defaultdict
 import os
 import subprocess
@@ -8,6 +9,13 @@ import Config
 from Metadata import Store
 
 store = Store()
+
+def delete_path(path):
+    try:
+        os.remove(path)
+    except:
+        print("Failed to deleted", path)
+        pass
 
 def upload_path(fname):
     return os.path.join(Config.upload_dir, fname)
@@ -55,8 +63,8 @@ def process_possible_duplicates(matches):
 
         for match in matches[1:]:
             try:
-                os.remove(upload_path(match.fname))
-                os.remove(thumbnail_path(match.fname))
+                delete_path(upload_path(match.fname))
+                delete_path(thumbnail_path(match.fname))
                 print("Deleted successfully")
             except:
                 print("Failed to delete uploaded file or thumbnail")
@@ -73,8 +81,10 @@ def process_possible_duplicates(matches):
             print("Skipping")
             return
 
+# -----------------------------------------------
+# Update actions
 
-if __name__ == "__main__":
+def duplicate_check():
     all_data = store.get_db_data(deleted=False)
 
     grouped_data = defaultdict(list)
@@ -89,3 +99,27 @@ if __name__ == "__main__":
             continue
         
         process_possible_duplicates(matches)
+
+def update_thumbnails():
+    all_data = store.get_db_data(deleted=False)
+    with store.batch():
+        for entry in all_data:
+            old_thumbnail_path = entry.thumbnail
+            thumbnail_path = Store.thumbnail(Config.upload_path(entry.fname), entry.fname)
+            if old_thumbnail_path != thumbnail_path and old_thumbnail_path:
+                delete_path(old_thumbnail_path)
+            store.metadata.update({"thumbnail": thumbnail_path}, {"fname": entry.fname})
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--duplicate-check",
+                        action="store_true")
+    parser.add_argument("-t", "--update-thumbnails",
+                        action="store_true")
+    args = parser.parse_args()
+
+    if args.duplicate_check:
+        duplicate_check()
+
+    if args.update_thumbnails:
+        update_thumbnails()

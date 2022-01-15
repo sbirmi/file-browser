@@ -3,6 +3,7 @@ import json
 import os
 import sqlite3
 import subprocess
+import tempfile
 
 from HashLib import hash_sha256
 
@@ -17,6 +18,7 @@ from Storage import (
 )
 from Utils import (
         now,
+        run,
         trace,
 )
 
@@ -80,19 +82,46 @@ class Store():
             existing_data[col_idxs['hash_sha256']] == hash_sha256(path)
 
     @staticmethod
-    def thumbnail(path, fname, size=240):
-        thumbnail_path = os.path.join(Config.thumbnail_dir, fname)
-        # try creating a thumbnail
-        try:
-            cmd = ["convert", path, "-resize",
-                   "{}x{}".format(size, size), thumbnail_path]
-            result = subprocess.call(cmd)
-            if result:
-                return None
-        except Exception as exc:
-            return None
+    def mime_type(path):
+        cmd = ["file", "-b", "--mime-type", path]
+        output = subprocess.check_output(cmd).decode("utf8")
+        return output
 
-        return thumbnail_path
+    @staticmethod
+    def video_frame(path):
+        tmppath = tempfile.mktemp()
+        cmd = ["ffmpeg", "-i", path, "-r", "1", "-t", "00:00:01", "-f", "image2", tmppath]
+        result = run(cmd)
+        if result is None:
+            return None
+        return tmppath
+
+    @staticmethod
+    def resize_image(srcpath, dstpath, size):
+        cmd = ["convert", srcpath, "-resize",
+               "{}x{}".format(size, size), dstpath]
+        result = run(cmd)
+        if result is None:
+            return None
+        return dstpath
+
+    @staticmethod
+    def thumbnail(path, fname, size=240):
+        """Returns thumbnail path"""
+        mime_type = Store.mime_type(path)
+        thumbnail_path = os.path.join(Config.thumbnail_dir, fname)
+        if not thumbnail_path.endswith(".png"):
+            thumbnail_path += ".png"
+
+        # try creating a thumbnail
+        if "image" in mime_type:
+            return Store.resize_image(path, thumbnail_path, size)
+
+        elif "video" in mime_type:
+            tmpframe = Store.video_frame(path)
+            return Store.resize_image(tmpframe, thumbnail_path, size)
+
+        return None
 
     # -------------------------------------------
     # Commit API

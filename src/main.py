@@ -83,7 +83,7 @@ def upload():
 def thumbnail(fname):
     store = Store()
     thumb_file = os.path.join(Config.thumbnail_dir, fname)
-    if store.get_db_data_fname(fname) and os.path.exists(thumb_file):
+    if store.metadata.get('*', where={'thumbnail': thumb_file}) and os.path.exists(thumb_file):
         return send_file(thumb_file, mimetype="image")
 
     return "404"

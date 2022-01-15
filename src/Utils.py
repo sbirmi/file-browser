@@ -1,4 +1,5 @@
 import datetime
+import subprocess
 
 def now():
     return datetime.datetime.now()
@@ -19,3 +20,9 @@ def trace(*msg):
         writeFn(str(tok))
     writeFn("\n")
 
+def run(cmd):
+    try:
+        result = subprocess.call(cmd)
+    except Exception as exc:
+        return None
+    return result

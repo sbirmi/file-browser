@@ -12,7 +12,10 @@ td {padding: 4px;}
 
 .ui_date_div::after {content: ""; clear: both; display: table;}
 .ui_date_banner {border-left: solid 5px; font-size: 120%; margin-top: 10px; margin-left: 5px; padding-left: 5px; border-top: solid 1px;}
-.ui_tile {float: left; width: 250px; height: 250px; background-color: #e0e0e0; border-radius: 5px; text-align: center; margin: 5px;}
+
+.ui_tile {float: left; width: 250px; height: 250px; background-color: #e0e0e0; border-radius: 5px; margin: 5px; white-space: nowrap; text-align: center;}
+.ui_tile_align_span {display: inline-block; height: 100%; vertical-align: middle;}
+.ui_thumbnail_img {vertical-align: middle;}
 </style>
 
 <script>
@@ -74,6 +77,9 @@ td {padding: 4px;}
       let img = document.createElement("img");
       img.src = url;
       img.title = tooltip;
+      if (cls) {
+         img.classList.add(cls);
+      }
       return img;
    }
 
@@ -90,6 +96,14 @@ td {padding: 4px;}
 
    function ui_br() {
       return document.createElement("br");
+   }
+
+   function ui_span(cls=null) {
+      let node = document.createElement("span");
+      if (cls) {
+         node.classList.add(cls);
+      }
+      return node;
    }
 
    function ui_text(txt) {
@@ -122,18 +136,21 @@ td {padding: 4px;}
             cur_date_div.appendChild(ui_date_banner);
          }
 
-         let content;
+         let link = ui_link("/get/" + ele.fname);
          if (ele.thumbnail[0] == "@") {
             let ext = ele.thumbnail.substr(2, 6).toLowerCase();
-            content = ui_div(ui_text(ext));
+            let content = ui_div(ui_text(ext));
             content.appendChild(ui_br());
             content.appendChild(ui_text(ele.fname));
+            link.appendChild(content);
          } else {
-            content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.fsize + " bytes");
+            let content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.fsize + " bytes", "ui_thumbnail_img");
+            link.appendChild(content);
          }
-         let link = ui_link("/get/" + ele.fname);
-         link.appendChild(content);
-         let thumb = ui_div(link, cls="ui_tile");
+         let thumb = ui_div(null, cls="ui_tile");
+         let span = ui_span(cls="ui_tile_align_span");
+         thumb.appendChild(span);
+         thumb.appendChild(link);
          cur_date_div.appendChild(thumb);
       }
 

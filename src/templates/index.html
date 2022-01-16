@@ -19,7 +19,74 @@ td {padding: 4px;}
 </style>
 
 <script>
-   let store = {fdata: []};
+
+   let month_repr = {
+      1: "Jan",
+      2: "Feb",
+      3: "Mar",
+      4: "Apr",
+      5: "May",
+      6: "Jun",
+      7: "Jul",
+      8: "Aug",
+      9: "Sep",
+      10: "Oct",
+      11: "Nov",
+      12: "Dec"};
+
+   class Store {
+      constructor() {
+         this.fdata = [];
+         this.section_by_date = {};
+      }
+
+      new_tile(tile) {
+         this.fdata.push(tile);
+         let dt = tile.file_date;
+         let section = this.section_by_date[dt];
+
+         if (section === undefined) {
+            section = new Section(dt);
+            this.section_by_date[dt] = section;
+         }
+
+         section.add_tile(tile);
+      }
+   }
+
+   class Section {
+      constructor(dt) {
+         this.dt = dt; // date
+         this.tiles = [];
+      }
+
+      add_tile(tile) {
+         this.tiles.push(tile);
+         tile.section = this;
+      }
+   }
+
+   class Tile {
+      constructor(fname, exif, fimgtime, thumbnail) {
+         this.fname = fname;
+         this.exif = exif;
+         this.fimgtime = fimgtime;
+
+         // Sample input: 2022:01:03 20:19:03-08:00
+         let dttm = fimgtime.split(" ");
+         let dtargs = dttm[0].split(":");
+         this.file_date = new Date(dtargs[0], dtargs[1], dtargs[2]);
+
+         this.thumbnail = thumbnail;
+
+         this.section = null;
+
+         this.img_created = false;
+         this.visible = false;
+      }
+   }
+
+   let store = new Store();
 
    let display_count = 0;
    let display_grow = 50;
@@ -31,20 +98,19 @@ td {padding: 4px;}
          let jsdata = JSON.parse(xmlHttp.responseText);
          for (let fname in jsdata) {
             let data = jsdata[fname];
-            store.fdata.push({
-                  fname: data[0],
-                  exif: data[6],
-                  thumbnail: data[9],
-                  fimgtime: data[8],
-               });
+            store.new_tile(
+            //store.fdata.push(
+               new Tile(
+               data[0],
+               data[6],
+               data[8],
+               data[9]));
          }
          file_list_initialize();
       }
    }
    xmlHttp.open("GET", "/db", true);
    xmlHttp.send(null);
-
-   let cmp_fdata_fn;
 
    // -------------------------------------------
    // UI helper fns
@@ -53,27 +119,6 @@ td {padding: 4px;}
       while (ui_ele.firstChild) {
             ui_ele.removeChild(ui_ele.lastChild);
       }
-   }
-
-   // -------------------------------------------
-   // fdata cmp fns
-
-   function cmp_fdata_ele_imgtime_asc(ele1, ele2) {
-      return ele1.fimgtime > ele2.fimgtime;
-   }
-
-   function cmp_fdata_ele_imgtime_desc(ele1, ele2) {
-      return !cmp_fdata_ele_imgtime_asc(ele1, ele2);
-   }
-
-   cmp_fdata_fn = cmp_fdata_ele_imgtime_desc;
-
-   // -------------------------------------------
-   // fdata util fns
-   function extract_date(date_time) {
-      // Sample input: 2022:01:03 20:19:03-08:00
-      let dt_tm = date_time.split(" ");
-      return dt_tm[0];
    }
 
    // -------------------------------------------
@@ -160,14 +205,15 @@ td {padding: 4px;}
       for (let i=start; i<stop; ++i) {
         let ele = store.fdata[i];
 
-         let ele_date = extract_date(ele.fimgtime);
-         if (file_list_cur_date_div == null || file_list_cur_date_div.date != ele_date) {
+         let ele_date = ele.file_date;
+         if (file_list_cur_date_div == null || file_list_cur_date_div.date.getTime() != ele_date.getTime()) {
             // big div that holds the date banner + thumbnail tiles
             file_list_cur_date_div = ui_div(null, cls="ui_date_div");
             file_list_cur_date_div.date = ele_date;
             ui_file_list.appendChild(file_list_cur_date_div);
 
-            let ui_date_banner = ui_div(ui_text(ele_date), cls="ui_date_banner");
+            let date_repr = month_repr[ele_date.getMonth()] + " " + ele_date.getDate() + ", " + ele_date.getFullYear();
+            let ui_date_banner = ui_div(ui_text(date_repr), cls="ui_date_banner");
             file_list_cur_date_div.appendChild(ui_date_banner);
          }
 

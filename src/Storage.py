@@ -91,7 +91,7 @@ class Table():
                         [row.name for row in self.fields]))
         return getattr(self, "type_")
 
-    def get(self, cols, where=None, group_by=None):
+    def get(self, cols, where=None, group_by=None, order_by=None):
         # pylint: disable=unused-variable,possibly-unused-variable
         where = where or {}
         group_by = group_by or []
@@ -107,6 +107,9 @@ class Table():
         if group_by:
             group_by = ", ".join(group_by)
             cmd += " group by {group_by}"
+        if order_by:
+            order_by = ", ".join(order_by)
+            cmd += " order by {order_by}"
 
         cmd += ";"
 

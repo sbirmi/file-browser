@@ -21,7 +21,8 @@ td {padding: 4px;}
 <script>
    let store = {fdata: []};
 
-   let max_imgs = 100;
+   let display_count = 0;
+   let display_grow = 50;
 
    // Asynchronous request for all DB data
    let xmlHttp = new XMLHttpRequest();
@@ -37,7 +38,7 @@ td {padding: 4px;}
                   fimgtime: data[8],
                });
          }
-         refresh_tab_file_list();
+         file_list_initialize();
       }
    }
    xmlHttp.open("GET", "/db", true);
@@ -124,29 +125,50 @@ td {padding: 4px;}
       return node;
    }
 
-   function refresh_tab_file_list() {
-      store.fdata.sort(cmp_fdata_fn);
+   let file_list_cur_date_div = null;
 
+   function file_list_initialize() {
       let ui_file_list = document.getElementById("ui_file_list");
       del_all_children(ui_file_list);
+      file_list_cur_date_div = null;
 
-      let cur_date_div = null;
-      let count = 0;
-      for (const ele of store.fdata) {
-         ++count;
-         if (count > max_imgs) {
-            break;
-         }
+      let ui_filecount = document.getElementById("ui_filecount");
+      del_all_children(ui_filecount);
+      ui_filecount.appendChild(ui_div(ui_text(store.fdata.length + " files")));
+
+      let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
+      del_all_children(ui_upload_dir_du);
+      ui_upload_dir_du.appendChild(ui_div(ui_text("{{upload_dir_du}}")));
+
+      display_count = 0;
+      file_list_grow();
+   }
+
+   function file_list_grow() {
+      let new_display_count = Math.min(display_count + display_grow,
+                                       store.fdata.length);
+      if (new_display_count == display_count) {
+         return;
+      }
+      file_list_display(display_count, new_display_count);
+      display_count = new_display_count;
+   }
+
+   function file_list_display(start, stop) {
+      let ui_file_list = document.getElementById("ui_file_list");
+
+      for (let i=start; i<stop; ++i) {
+        let ele = store.fdata[i];
 
          let ele_date = extract_date(ele.fimgtime);
-         if (cur_date_div == null || cur_date_div.date != ele_date) {
+         if (file_list_cur_date_div == null || file_list_cur_date_div.date != ele_date) {
             // big div that holds the date banner + thumbnail tiles
-            cur_date_div = ui_div(null, cls="ui_date_div");
-            cur_date_div.date = ele_date;
-            ui_file_list.appendChild(cur_date_div);
+            file_list_cur_date_div = ui_div(null, cls="ui_date_div");
+            file_list_cur_date_div.date = ele_date;
+            ui_file_list.appendChild(file_list_cur_date_div);
 
             let ui_date_banner = ui_div(ui_text(ele_date), cls="ui_date_banner");
-            cur_date_div.appendChild(ui_date_banner);
+            file_list_cur_date_div.appendChild(ui_date_banner);
          }
 
          let link = ui_link("/get/" + ele.fname);
@@ -164,17 +186,17 @@ td {padding: 4px;}
          let span = ui_span(cls="ui_tile_align_span");
          thumb.appendChild(span);
          thumb.appendChild(link);
-         cur_date_div.appendChild(thumb);
+         file_list_cur_date_div.appendChild(thumb);
       }
-
-      let ui_filecount = document.getElementById("ui_filecount");
-      del_all_children(ui_filecount);
-      ui_filecount.appendChild(ui_div(ui_text(store.fdata.length + " files")));
-
-      let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
-      del_all_children(ui_upload_dir_du);
-      ui_upload_dir_du.appendChild(ui_div(ui_text("{{upload_dir_du}}")));
    }
+
+window.addEventListener('scroll', function(event) {
+   let element = event.target;
+   const tile_height = 300;
+   if (window.scrollMaxY > tile_height && window.scrollY > window.scrollMaxY - tile_height) {
+      file_list_grow();
+   }
+});
 </script>
 </head>
 

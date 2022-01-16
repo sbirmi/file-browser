@@ -193,7 +193,7 @@ td {padding: 4px;}
 window.addEventListener('scroll', function(event) {
    let element = event.target;
    const tile_height = 300;
-   if (window.scrollMaxY > tile_height && window.scrollY > window.scrollMaxY - tile_height) {
+   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - tile_height) {
       file_list_grow();
    }
 });

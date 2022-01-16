@@ -91,4 +91,4 @@ def db_data():
     store = Store()
     filters = {"deleted": False}
     file_data = store.get_db_data(**filters)
-    return jsonify({entry.fname: entry for entry in file_data})
+    return jsonify(file_data)

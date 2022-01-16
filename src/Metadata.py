@@ -271,7 +271,7 @@ class Store():
         where = {}
         if deleted is not None:
             where["deleted"] = deleted
-        data = self.metadata.get('*', where=where)
+        data = self.metadata.get('*', where=where, order_by=["exif_img_create_date desc"])
         return data
 
     def get_db_data_fname(self, fname):

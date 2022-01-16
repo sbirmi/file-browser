@@ -1,6 +1,7 @@
 import datetime
 from flask import (
         Flask,
+        jsonify,
         render_template,
         request,
         send_file,
@@ -20,23 +21,8 @@ def page(uploaded_files=[], failed_uploads=[],
         message=""):
     udir = app.config["UPLOAD_FOLDER"]
 
-    store = Store()
-    file_data = store.get_db_data(deleted=False)
-
-    file_data = [
-            (fd.fname,
-             fd.mime_type,
-             fd.exif['FileSize'],
-             fd.exif['FileModifyDate'],
-             fd.exif_img_create_date,
-             fd.deleted,
-             (fd.thumbnail and fd.thumbnail[1:]) or ("@" + os.path.splitext(fd.fname)[-1]), # thumbnail file or "@." + file extension
-            ) for fd in file_data
-            if not fd.deleted]
-
     return render_template("index.html",
             upload_dir_du=Store.upload_dir_disk_usage(),
-            file_list=file_data,
             error=error,
             message=message,
             failed_uploads=failed_uploads,
@@ -96,3 +82,13 @@ def get_file(fname):
         return send_file(upload_file)#, mimetype="image")
 
     return "404"
+
+@app.route("/db", methods=["GET"])
+def db_data():
+    """
+    deleted
+    """
+    store = Store()
+    filters = {"deleted": False}
+    file_data = store.get_db_data(**filters)
+    return jsonify({entry.fname: entry for entry in file_data})

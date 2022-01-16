@@ -21,16 +21,29 @@ td {padding: 4px;}
 <script>
    let store = {fdata: []};
 
-   let max_imgs = 500;
+   let max_imgs = 100;
+
+   // Asynchronous request for all DB data
+   let xmlHttp = new XMLHttpRequest();
+   xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+         let jsdata = JSON.parse(xmlHttp.responseText);
+         for (let fname in jsdata) {
+            let data = jsdata[fname];
+            store.fdata.push({
+                  fname: fname,
+                  exif: data[6],
+                  thumbnail: data[9],
+                  fimgtime: data[8],
+               });
+         }
+         refresh_tab_file_list();
+      }
+   }
+   xmlHttp.open("GET", "/db", true);
+   xmlHttp.send(null);
+
    let cmp_fdata_fn;
-   {% for fname, fmimetype, fsize, fmtime, fimgtime, fdeleted, fthumb in file_list  %}store.fdata.push({fname: "{{fname}}",
-              fmimetype: "{{fmimetype}}",
-              fsize: {{fsize}},
-              fmtime: "{{fmtime}}",
-              fimgtime: "{{fimgtime}}",
-              fdeleted: "{{fdeleted}}"=="True",
-              thumbnail: "{{fthumb}}"});
-   {% endfor %}
 
    // -------------------------------------------
    // UI helper fns
@@ -144,7 +157,7 @@ td {padding: 4px;}
             content.appendChild(ui_text(ele.fname));
             link.appendChild(content);
          } else {
-            let content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.fsize + " bytes", "ui_thumbnail_img");
+            let content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.exif["FileSize"] + " bytes", "ui_thumbnail_img");
             link.appendChild(content);
          }
          let thumb = ui_div(null, cls="ui_tile");
@@ -165,7 +178,7 @@ td {padding: 4px;}
 </script>
 </head>
 
-<body onload="refresh_tab_file_list();">
+<body>
    <table width=100% border=0px> <!-- top bar -->
       <tr>
          <td><h1>File Browser</h1></td>

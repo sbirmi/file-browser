@@ -236,7 +236,7 @@ td {padding: 4px;}
          super();
 
          this.start = 0;   // Items to get start at this index
-         this.count = 100; // Number of items to fetch from the server
+         this.count = 50; // Number of items to fetch from the server
 
          this.last_query_start_at = null;
          this.do_request();
@@ -283,6 +283,10 @@ td {padding: 4px;}
             let data = response[fname];
             store.new_tile(new Tile(data));
          }
+
+         let ui_showing_count = document.getElementById("ui_showingcount");
+         del_all_children(ui_showing_count);
+         ui_showing_count.appendChild(ui_div(ui_text(store.count())));
       }
 
       do_request() {
@@ -374,8 +378,8 @@ td {padding: 4px;}
          <td><h1>File Browser</h1></td>
          <td align=right> <!-- upload pane -->
             <form method="POST" enctype="multipart/form-data" action="/upload">
-               <input type="file" name="files" multiple="">
-               <input type="submit" value="Upload">
+               <input type="file" name="files" multiple="" style="font-size: 120%;">
+               <input type="submit" value="Upload" style="font-size: 120%;">
             </form>
          </td>
       </tr>
@@ -401,8 +405,10 @@ td {padding: 4px;}
    <!-- Bar above file listing -->
    <table>
       <tr>
-         <td id="ui_upload_dir_du"></td>
+         <td id="ui_showingcount"></td>
+         <td>/</td>
          <td id="ui_filecount"></td>
+         <td id="ui_upload_dir_du"></td>
       </tr>
    </table>
 

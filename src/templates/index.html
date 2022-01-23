@@ -198,30 +198,42 @@ td {padding: 4px;}
       }
    }
 
-   class Query {
-      constructor(xmlHttp) {
-         this.xmlHttp = xmlHttp;
-         this.start = 0;
-         this.count = 100; // Number of items to fetch from the server
-
-         this.last_query_start_at = null;
-
-         this.do_request();
+   class HttpRequest {
+      constructor() {
+         this.xmlHttp = new XMLHttpRequest();
+         this.xmlHttp.querier_ = this;
+         this.xmlHttp.onreadystatechange = this.onreadystatechange;
       }
 
-      do_request() {
-         if (this.count == 0 || this.last_query_start_at == this.start) {
-            return;
+      onreadystatechange() {
+         if (this.readyState == 4 && this.status == 200) {
+            let response_json = JSON.parse(this.responseText);
+            this.querier_.handle_response_json(response_json);
          }
-         let args = "start=" + this.start + "&count=" + this.count;
-         console.log("Requesting " + args);
-
-         this.last_query_start_at = this.start;
-         this.xmlHttp.open("GET", "/db?" + args, true);
-         this.xmlHttp.send(null);
       }
 
       handle_response_json(response) {
+         alert("JSON handler not overridden");
+      }
+   }
+
+   class Query extends HttpRequest {
+      constructor() {
+         super();
+
+         this.start = 0;   // Items to get start at this index
+         this.count = 100; // Number of items to fetch from the server
+
+         this.last_query_start_at = null;
+         this.do_request();
+      }
+
+      handle_response_json(response) {
+         if (response [0] == "ERROR") {
+            alert(response[1]);
+            return;
+         }
+
          if (this.start == 0) {
          }
          if (store.count() != this.start) {
@@ -245,6 +257,18 @@ td {padding: 4px;}
             store.new_tile(new Tile(data));
          }
       }
+
+      do_request() {
+         if (this.count == 0 || this.last_query_start_at == this.start) {
+            return;
+         }
+         let args = "start=" + this.start + "&count=" + this.count;
+         console.log("Requesting " + args);
+
+         this.last_query_start_at = this.start;
+         this.xmlHttp.open("GET", "/db?" + args, true);
+         this.xmlHttp.send(null);
+      }
    }
 
    // -------------------------------------------
@@ -263,7 +287,7 @@ td {padding: 4px;}
    }
 
    function query_start() {
-      current_query = new Query(xmlHttp);
+      current_query = new Query();
    }
 
    function query_more_hits() {
@@ -275,22 +299,6 @@ td {padding: 4px;}
 
    // -------------------------------------------
    // Code to run when the page is loaded
-
-   let xmlHttp = new XMLHttpRequest();
-   xmlHttp.onreadystatechange = function() {
-      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-         let response_json = JSON.parse(xmlHttp.responseText);
-
-         // Handle DB response handling
-         if (response_json[0] == "ERROR") {
-            alert(response_json[1]);
-
-         } else {
-            current_query.handle_response_json(response_json);
-         }
-
-      }
-   }
 
    window.addEventListener('scroll', function (event) {
       let element = event.target;

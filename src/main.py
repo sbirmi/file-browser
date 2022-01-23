@@ -86,7 +86,6 @@ def get_file(fname):
 @app.route("/db", methods=["GET"])
 def db_data():
     """
-    deleted
     """
     args = request.args
     start = args.get('start', '0')

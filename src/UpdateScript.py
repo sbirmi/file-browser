@@ -85,7 +85,7 @@ def process_possible_duplicates(matches):
 # Update actions
 
 def duplicate_check():
-    all_data = store.get_db_data(deleted=False)
+    all_data = store.get_db_data(deleted=False, reverse=True)
 
     grouped_data = defaultdict(list)
 

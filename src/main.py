@@ -88,7 +88,18 @@ def db_data():
     """
     deleted
     """
+    args = request.args
+    start = args.get('start', '0')
+    count = args.get('count', '50')
+
+    try:
+        start = int(start)
+        count = int(count)
+    except:
+        return jsonify(["ERROR", "Bad query"])
+
     store = Store()
     filters = {"deleted": False}
     file_data = store.get_db_data(**filters)
-    return jsonify(file_data)
+
+    return jsonify(file_data[start:start + count])

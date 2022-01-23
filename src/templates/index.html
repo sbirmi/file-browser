@@ -34,84 +34,6 @@ td {padding: 4px;}
       11: "Nov",
       12: "Dec"};
 
-   class Store {
-      constructor() {
-         this.fdata = [];
-         this.section_by_date = {};
-      }
-
-      new_tile(tile) {
-         this.fdata.push(tile);
-         let dt = tile.file_date;
-         let section = this.section_by_date[dt];
-
-         if (section === undefined) {
-            section = new Section(dt);
-            this.section_by_date[dt] = section;
-         }
-
-         section.add_tile(tile);
-      }
-   }
-
-   class Section {
-      constructor(dt) {
-         this.dt = dt; // date
-         this.tiles = [];
-      }
-
-      add_tile(tile) {
-         this.tiles.push(tile);
-         tile.section = this;
-      }
-   }
-
-   class Tile {
-      constructor(fname, exif, fimgtime, thumbnail) {
-         this.fname = fname;
-         this.exif = exif;
-         this.fimgtime = fimgtime;
-
-         // Sample input: 2022:01:03 20:19:03-08:00
-         let dttm = fimgtime.split(" ");
-         let dtargs = dttm[0].split(":");
-         this.file_date = new Date(dtargs[0], dtargs[1], dtargs[2]);
-
-         this.thumbnail = thumbnail;
-
-         this.section = null;
-
-         this.img_created = false;
-         this.visible = false;
-      }
-   }
-
-   let store = new Store();
-
-   let display_count = 0;
-   let display_grow = 50;
-
-   // Asynchronous request for all DB data
-   let xmlHttp = new XMLHttpRequest();
-   xmlHttp.onreadystatechange = function() {
-      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-         let jsdata = JSON.parse(xmlHttp.responseText);
-         for (let fname in jsdata) {
-            let data = jsdata[fname];
-            store.new_tile(
-            //store.fdata.push(
-               new Tile(
-               data[0],
-               data[6],
-               data[8],
-               data[9]));
-         }
-         file_list_initialize();
-      }
-   }
-   xmlHttp.open("GET", "/db", true);
-   xmlHttp.send(null);
-
    // -------------------------------------------
    // UI helper fns
 
@@ -170,83 +92,218 @@ td {padding: 4px;}
       return node;
    }
 
-   let file_list_cur_date_div = null;
+   // -------------------------------------------
+   // Object definitions
 
-   function file_list_initialize() {
-      let ui_file_list = document.getElementById("ui_file_list");
-      del_all_children(ui_file_list);
-      file_list_cur_date_div = null;
+   class Store {
+      constructor() {
+         this.fdata = [];
+         this.section_by_date = {};
 
-      let ui_filecount = document.getElementById("ui_filecount");
-      del_all_children(ui_filecount);
-      ui_filecount.appendChild(ui_div(ui_text(store.fdata.length + " files")));
-
-      let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
-      del_all_children(ui_upload_dir_du);
-      ui_upload_dir_du.appendChild(ui_div(ui_text("{{upload_dir_du}}")));
-
-      display_count = 0;
-      file_list_grow();
-   }
-
-   function file_list_grow() {
-      let new_display_count = Math.min(display_count + display_grow,
-                                       store.fdata.length);
-      if (new_display_count == display_count) {
-         return;
+         this.ui = document.getElementById("ui_file_list_new");
       }
-      file_list_display(display_count, new_display_count);
-      display_count = new_display_count;
-   }
 
-   function file_list_display(start, stop) {
-      let ui_file_list = document.getElementById("ui_file_list");
+      count() {
+            return this.fdata.length;
+      }
 
-      for (let i=start; i<stop; ++i) {
-        let ele = store.fdata[i];
+      new_tile(tile) {
+         this.fdata.push(tile);
+         let dt = tile.file_date;
+         let section = this.section_by_date[dt];
 
-         let ele_date = ele.file_date;
-         if (file_list_cur_date_div == null || file_list_cur_date_div.date.getTime() != ele_date.getTime()) {
-            // big div that holds the date banner + thumbnail tiles
-            file_list_cur_date_div = ui_div(null, cls="ui_date_div");
-            file_list_cur_date_div.date = ele_date;
-            ui_file_list.appendChild(file_list_cur_date_div);
-
-            let date_repr = month_repr[ele_date.getMonth()] + " " + ele_date.getDate() + ", " + ele_date.getFullYear();
-            let ui_date_banner = ui_div(ui_text(date_repr), cls="ui_date_banner");
-            file_list_cur_date_div.appendChild(ui_date_banner);
+         if (section === undefined) {
+            section = new Section(this.ui, dt);
+            this.section_by_date[dt] = section;
          }
 
-         let link = ui_link("/get/" + ele.fname);
-         if (ele.thumbnail[0] == "@") {
-            let ext = ele.thumbnail.substr(2, 6).toLowerCase();
+         section.add_tile(tile);
+      }
+   }
+
+   class Section {
+      constructor(parent_ui, dt) {
+         this.parent_ui = parent_ui;
+         this.dt = dt; // date
+         this.tiles = [];
+
+         // Create UI
+         let date_repr = month_repr[dt.getMonth()] + " " + dt.getDate() + ", " + dt.getFullYear();
+         this.ui_date_banner = ui_div(ui_text(date_repr), "ui_date_banner");
+
+         this.ui = ui_div(null, "ui_date_div");
+
+         this.parent_ui.appendChild(this.ui);
+         this.ui.appendChild(this.ui_date_banner);
+      }
+
+      add_tile(tile) {
+         this.tiles.push(tile);
+         tile.add_to_section(this);
+      }
+   }
+
+   class Tile {
+      //constructor(fname, exif, fimgtime, thumbnail) {
+      constructor(data) {
+         this.fname = data[0]; //fname;
+         this.exif = data[6]; //exif;
+         this.fimgtime = data[8]; //fimgtime;
+         this.thumbnail = data[9]; //thumbnail;
+
+         // Sample input: 2022:01:03 20:19:03-08:00
+         let dttm = this.fimgtime.split(" ");
+         let dtargs = dttm[0].split(":");
+         this.file_date = new Date(dtargs[0], dtargs[1], dtargs[2]);
+
+
+         this.section = null;
+
+         this._visible = null;
+
+         // Create UI
+         this.ui = ui_div(null, "ui_tile");
+         let link = ui_link("/get/" + this.fname);
+         if (this.thumbnail == null) {
+            // No thumbnail
+            let ext = this.fname.split(".").pop().substr(0, 6).toLowerCase();
             let content = ui_div(ui_text(ext));
             content.appendChild(ui_br());
-            content.appendChild(ui_text(ele.fname));
+            content.appendChild(ui_text(this.fname));
             link.appendChild(content);
+
          } else {
-            let content = ui_img(ele.thumbnail, ele.fname + "\n" + ele.exif["FileSize"] + " bytes", "ui_thumbnail_img");
+            // Has thumbnail
+            let content = ui_img(this.thumbnail,
+                                 this.fname + "\n" + this.exif["FileSize"] + " bytes",
+                                 "ui_thumbnail_img");
             link.appendChild(content);
+            let span = ui_span("ui_tile_align_span");
+            this.ui.appendChild(span);
          }
-         let thumb = ui_div(null, cls="ui_tile");
-         let span = ui_span(cls="ui_tile_align_span");
-         thumb.appendChild(span);
-         thumb.appendChild(link);
-         file_list_cur_date_div.appendChild(thumb);
+         this.ui.appendChild(link);
+      }
+
+      add_to_section(section) {
+         this.section = section;
+         section.ui.appendChild(this.ui);
+      }
+
+      visibility_set(val) {
+         this._visibile = val;
+      }
+
+      visibility_toggle() {
+         this.visibility_set(!this._visible);
       }
    }
 
-window.addEventListener('scroll', function(event) {
-   let element = event.target;
-   const tile_height = 300;
-   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - tile_height) {
-      file_list_grow();
+   class Query {
+      constructor(xmlHttp) {
+         this.xmlHttp = xmlHttp;
+         this.start = 0;
+         this.count = 100; // Number of items to fetch from the server
+
+         this.last_query_start_at = null;
+
+         this.do_request();
+      }
+
+      do_request() {
+         if (this.count == 0 || this.last_query_start_at == this.start) {
+            return;
+         }
+         let args = "start=" + this.start + "&count=" + this.count;
+         console.log("Requesting " + args);
+
+         this.last_query_start_at = this.start;
+         this.xmlHttp.open("GET", "/db?" + args, true);
+         this.xmlHttp.send(null);
+      }
+
+      handle_response_json(response) {
+         if (this.start == 0) {
+         }
+         if (store.count() != this.start) {
+            console.log("Items in store: " + store.count());
+            console.log("this.start: " + this.start);
+            alert("Something unexpected happened");
+            return;
+         }
+
+         console.log("Response [" + this.start + ", " + (this.start + response.length) + "]");
+         this.start += response.length;
+
+         if (response.length == 0) {
+            console.log("Reached the end");
+            this.count = 0;
+            return;
+         }
+
+         for (let fname in response) {
+            let data = response[fname];
+            store.new_tile(new Tile(data));
+         }
+      }
    }
-});
+
+   // -------------------------------------------
+   // Global variables
+
+   let store = null;
+   let current_query = null;
+
+
+   // -------------------------------------------
+   // Entry points
+
+   function init() {
+      store = new Store();
+      query_start();
+   }
+
+   function query_start() {
+      current_query = new Query(xmlHttp);
+   }
+
+   function query_more_hits() {
+      if (!current_query) {
+         return;
+      }
+      current_query.do_request();
+   }
+
+   // -------------------------------------------
+   // Code to run when the page is loaded
+
+   let xmlHttp = new XMLHttpRequest();
+   xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+         let response_json = JSON.parse(xmlHttp.responseText);
+
+         // Handle DB response handling
+         if (response_json[0] == "ERROR") {
+            alert(response_json[1]);
+
+         } else {
+            current_query.handle_response_json(response_json);
+         }
+
+      }
+   }
+
+   window.addEventListener('scroll', function (event) {
+      let element = event.target;
+      const tile_height = 300;
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - tile_height) {
+         query_more_hits();
+      }
+   });
+
 </script>
 </head>
 
-<body>
+<body onload="init();">
    <table width=100% border=0px> <!-- top bar -->
       <tr>
          <td><h1>File Browser</h1></td>
@@ -285,8 +342,7 @@ window.addEventListener('scroll', function(event) {
    </table>
 
    <!-- file listing -->
-   <div width="100%" id="ui_file_list">
-   </div>
+   <div width="100%" id="ui_file_list_new"></div>
 
    <hr>
 

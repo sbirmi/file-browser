@@ -63,7 +63,7 @@ class Store():
 
     @staticmethod
     def upload_dir_disk_usage():
-        cmd = ["du", "-sh", Config.upload_dir]
+        cmd = ["du", "-sh", Config.upload_dir.rstrip("/") + "/"]
         output = subprocess.check_output(cmd)
         # Sample output
         # 4.4G    uploads/
@@ -267,11 +267,13 @@ class Store():
     # -------------------------------------------
     # Fetching metadata
 
-    def get_db_data(self, deleted=None):
+    def get_db_data(self, deleted=None, reverse=False):
         where = {}
         if deleted is not None:
             where["deleted"] = deleted
-        data = self.metadata.get('*', where=where, order_by=["exif_img_create_date desc"])
+        data = self.metadata.get('*', where=where,
+                                 order_by=["exif_img_create_date " +
+                                           ("asc" if reverse else "desc")])
         return data
 
     def get_db_data_fname(self, fname):

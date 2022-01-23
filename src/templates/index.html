@@ -16,23 +16,28 @@ td {padding: 4px;}
 .ui_tile {float: left; width: 250px; height: 250px; background-color: #e0e0e0; border-radius: 5px; margin: 5px; white-space: nowrap; text-align: center;}
 .ui_tile_align_span {display: inline-block; height: 100%; vertical-align: middle;}
 .ui_thumbnail_img {vertical-align: middle;}
+
+.ui_search {font-size: 120%; display: block; border: none; border-bottom: solid 1px #404040;}
+.ui_search_feedback {font-style: italic; text-color: #ff8080;}
 </style>
 
 <script>
 
+   const MIN_SEARCH_LENGTH = 3;
+
    let month_repr = {
-      1: "Jan",
-      2: "Feb",
-      3: "Mar",
-      4: "Apr",
-      5: "May",
-      6: "Jun",
-      7: "Jul",
-      8: "Aug",
-      9: "Sep",
-      10: "Oct",
-      11: "Nov",
-      12: "Dec"};
+      0: "Jan",
+      1: "Feb",
+      2: "Mar",
+      3: "Apr",
+      4: "May",
+      5: "Jun",
+      6: "Jul",
+      7: "Aug",
+      8: "Sep",
+      9: "Oct",
+      10: "Nov",
+      11: "Dec"};
 
    // -------------------------------------------
    // UI helper fns
@@ -100,11 +105,21 @@ td {padding: 4px;}
          this.fdata = [];
          this.section_by_date = {};
 
-         this.ui = document.getElementById("ui_file_list_new");
+         this.ui = document.getElementById("ui_file_list");
       }
 
       count() {
-            return this.fdata.length;
+         return this.fdata.length;
+      }
+
+      clear() {
+         this.fdata = [];
+         this.section_by_date = {};
+         del_all_children(this.ui);
+
+         let ui_showing_count = document.getElementById("ui_showingcount");
+         del_all_children(ui_showing_count);
+         ui_showing_count.appendChild(ui_div(ui_text(store.count())));
       }
 
       new_tile(tile) {
@@ -154,8 +169,7 @@ td {padding: 4px;}
          // Sample input: 2022:01:03 20:19:03-08:00
          let dttm = this.fimgtime.split(" ");
          let dtargs = dttm[0].split(":");
-         this.file_date = new Date(dtargs[0], dtargs[1], dtargs[2]);
-
+         this.file_date = new Date(dtargs[0] * 1, dtargs[1] * 1 - 1, dtargs[2] * 1);
 
          this.section = null;
 
@@ -232,11 +246,14 @@ td {padding: 4px;}
    }
 
    class Query extends HttpRequest {
-      constructor() {
+      constructor(search_text) {
          super();
 
          this.start = 0;   // Items to get start at this index
          this.count = 50; // Number of items to fetch from the server
+
+         this.search_text = search_text;
+         console.log("Searching for: " + search_text);
 
          this.last_query_start_at = null;
          this.do_request();
@@ -256,13 +273,18 @@ td {padding: 4px;}
          //    ]
          //
          //    []  < No more data to send
+
+         let ui_search_feedback = document.getElementById("ui_search_feedback");
+         del_all_children(ui_search_feedback);
          if (response [0] == "ERROR") {
-            alert(response[1]);
+            ui_search_feedback.appendChild(ui_text(response[1]));
             return;
          }
 
          if (this.start == 0) {
+            store.clear();
          }
+
          if (store.count() != this.start) {
             console.log("Items in store: " + store.count());
             console.log("this.start: " + this.start);
@@ -295,7 +317,9 @@ td {padding: 4px;}
          }
 
          this.last_query_start_at = this.start;
-         super.do_request("/db", {"start": this.start, "count": this.count});
+         super.do_request("/db", {"start": this.start,
+                                  "count": this.count,
+                                  "search": this.search_text});
       }
    }
 
@@ -344,11 +368,11 @@ td {padding: 4px;}
    function init() {
       store = new Store();
       db_stats_query = new DbStats();
-      query_start();
+      search();
    }
 
-   function query_start() {
-      current_query = new Query();
+   function query_start(txt) {
+      current_query = new Query(txt);
    }
 
    function query_more_hits() {
@@ -356,6 +380,30 @@ td {padding: 4px;}
          return;
       }
       current_query.do_request();
+   }
+
+   function search() {
+      if (search.last_text == null) {
+         search.last_text = null;
+      }
+
+      let ui_search = document.getElementById("ui_search");
+      let search_text = ui_search.value;
+      let last_text = search.last_text;
+
+      if (last_text != null && last_text.length < MIN_SEARCH_LENGTH) {
+         last_text = "";
+      }
+      if (search_text.length < MIN_SEARCH_LENGTH) {
+         search_text = "";
+      }
+
+      if (last_text == search_text) {
+         return;
+      }
+     
+      query_start(search_text);
+      search.last_text = search_text;
    }
 
    // -------------------------------------------
@@ -409,11 +457,12 @@ td {padding: 4px;}
          <td>/</td>
          <td id="ui_filecount"></td>
          <td id="ui_upload_dir_du"></td>
+         <td><input type="text" id="ui_search" class="ui_search" placeholder="search..." oninput="search();"><label id="ui_search_feedback" class="ui_search_feedback"></label></td>
       </tr>
    </table>
 
    <!-- file listing -->
-   <div width="100%" id="ui_file_list_new"></div>
+   <div width="100%" id="ui_file_list"></div>
 
    <hr>
 

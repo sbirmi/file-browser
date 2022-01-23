@@ -87,18 +87,27 @@ def db_data():
     """
     """
     args = request.args
+    search = str(args.get('search', ''))
     start = args.get('start', '0')
     count = args.get('count', '50')
 
     try:
         start = int(start)
+    except:
+        return jsonify(["ERROR", "Bad start index"])
+
+    try:
         count = int(count)
     except:
-        return jsonify(["ERROR", "Bad query"])
+        return jsonify(["ERROR", "Bad count"])
 
     store = Store()
     filters = {"deleted": False}
     file_data = store.get_db_data(**filters)
+
+    if search:
+        file_data = [fd for fd in file_data if
+                     search in str(fd.exif_img_create_date)]
 
     return jsonify(file_data[start:start + count])
 

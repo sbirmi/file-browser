@@ -212,6 +212,20 @@ td {padding: 4px;}
          }
       }
 
+      do_request(url, args) {
+         let args_str = "";
+         for (let key in args) {
+            let val = args[key];
+            if (args_str) {
+               args_str += "&";
+            }
+            args_str += key + "=" + val;
+         }
+         console.log("Requesting " + url + " " + args_str);
+         this.xmlHttp.open("GET", url + "?" + args_str, true);
+         this.xmlHttp.send(null);
+      }
+
       handle_response_json(response) {
          alert("JSON handler not overridden");
       }
@@ -262,12 +276,9 @@ td {padding: 4px;}
          if (this.count == 0 || this.last_query_start_at == this.start) {
             return;
          }
-         let args = "start=" + this.start + "&count=" + this.count;
-         console.log("Requesting " + args);
 
          this.last_query_start_at = this.start;
-         this.xmlHttp.open("GET", "/db?" + args, true);
-         this.xmlHttp.send(null);
+         super.do_request("/db", {"start": this.start, "count": this.count});
       }
    }
 

@@ -44,7 +44,6 @@ class Metadata(Table):
             Timestamp("time_db_updated"),
             Bool("deleted"),
             Txt("desc"),
-
             Json("exif"), # exiftool -json data
             Txt("mime_type"),
             Timestamp("exif_img_create_date"),

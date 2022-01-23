@@ -110,7 +110,6 @@ class Table():
         if order_by:
             order_by = ", ".join(order_by)
             cmd += " order by {order_by}"
-
         cmd += ";"
 
         self.execute(cmd.format(**locals()), values)
@@ -121,6 +120,22 @@ class Table():
             return [deserialized_row(row) for row in self.cursor.fetchall()]
 
         return self.cursor.fetchall()
+
+    def count(self, where=None, group_by=None):
+        table = self.name
+        cmd = "select count(*) from {table}"
+        if where:
+            where_unspec = " and ".join("%s = ?" % w for w in where)
+            values = self.encoded_values(where)
+            cmd += " where {where_unspec}"
+        if group_by:
+            group_by = ", ".join(group_by)
+            cmd += " group by {group_by}"
+        cmd += ";"
+
+        self.execute(cmd.format(**locals()), values)
+
+        return self.cursor.fetchall()[0][0]
 
     def create_cmd(self):
         # pylint: disable=unused-variable,possibly-unused-variable

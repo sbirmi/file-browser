@@ -243,6 +243,19 @@ td {padding: 4px;}
       }
 
       handle_response_json(response) {
+         // Response can be:
+         //
+         //    ["ERROR", <str:explanation>]
+         //
+         //    [ [<str:fname>, <str:hash_sha256>,
+         //       <ts:time_db_added>, <ts:time_db_updated>,
+         //       <bool:deleted>, <txt:desc>,
+         //       <json:exif>, <str:mime_type>,
+         //       <ts:exif_img_create_date>, <str:thumbnail>],
+         //      [...],
+         //    ]
+         //
+         //    []  < No more data to send
          if (response [0] == "ERROR") {
             alert(response[1]);
             return;
@@ -282,18 +295,51 @@ td {padding: 4px;}
       }
    }
 
+   class DbStats extends HttpRequest {
+      constructor() {
+         super();
+         this.do_request();
+      }
+
+      handle_response_json(response) {
+         // Response can be:
+         //
+         //    ["ERROR", <str:explanation>]
+         //
+         //    [<str:diskusage>,
+         //     <int:filecount>]
+         if (response[0] == "ERROR") {
+            console.log(response);
+            return;
+         }
+
+         let ui_upload_dir_du = document.getElementById("ui_upload_dir_du");
+         del_all_children(ui_upload_dir_du);
+         ui_upload_dir_du.appendChild(ui_div(ui_text(response[0])));
+
+         let ui_filecount = document.getElementById("ui_filecount");
+         del_all_children(ui_filecount);
+         ui_filecount.appendChild(ui_div(ui_text(response[1] + " files")));
+      }
+
+      do_request() {
+         super.do_request("/db-stats", {});
+      }
+   }
+
    // -------------------------------------------
    // Global variables
 
    let store = null;
    let current_query = null;
-
+   let db_stats_query = null;
 
    // -------------------------------------------
    // Entry points
 
    function init() {
       store = new Store();
+      db_stats_query = new DbStats();
       query_start();
    }
 

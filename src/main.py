@@ -22,7 +22,6 @@ def page(uploaded_files=[], failed_uploads=[],
     udir = app.config["UPLOAD_FOLDER"]
 
     return render_template("index.html",
-            upload_dir_du=Store.upload_dir_disk_usage(),
             error=error,
             message=message,
             failed_uploads=failed_uploads,
@@ -102,3 +101,13 @@ def db_data():
     file_data = store.get_db_data(**filters)
 
     return jsonify(file_data[start:start + count])
+
+@app.route("/db-stats", methods=["GET"])
+def db_stats():
+    store = Store()
+    filters = {"deleted": False}
+
+    return jsonify([
+            Store.upload_dir_disk_usage(),
+            store.metadata.count(where=filters)
+        ])

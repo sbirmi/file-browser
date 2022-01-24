@@ -16,6 +16,19 @@ Metadata for each uploaded file is stored in a sqlite db.
 8. ffprobe - to get video duration
 9. ffmpeg - to generate thumbnail from a video
 
+## Installation
+
+```
+$ git clone https://github.com/sbirmi/file-browser.git
+$ virtualenv -p py3 file-browser
+$ cd virtualenv/src
+$ source ../bin/activate
+$ pip install flask
+$ ./run.sh
+```
+
+Connect to http://127.0.0.1:5000!
+
 ## Running the web interface
 
 ```

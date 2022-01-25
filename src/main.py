@@ -51,7 +51,7 @@ def upload():
 
         if not db_row or db_row.deleted:
             print("Uploaded:", uploaded_file, "->", filename)
-            local_path = os.path.join(Config.upload_dir, filename)
+            local_path = Config.upload_path(filename)
             uploaded_file.save(local_path)
             store.process(local_path)
             success_files.append(filename)
@@ -67,8 +67,8 @@ def upload():
 @app.route("/thumbnails/<fname>")
 def thumbnail(fname):
     store = Store()
-    thumb_file = os.path.join(Config.thumbnail_dir, fname)
-    if store.metadata.get('*', where={'thumbnail': thumb_file}) and os.path.exists(thumb_file):
+    thumb_file = Config.thumbnail_path(fname)
+    if store.metadata.get('*', where={'thumbnail': fname}) and os.path.exists(thumb_file):
         return send_file(thumb_file, mimetype="image")
 
     return "404"
@@ -76,7 +76,7 @@ def thumbnail(fname):
 @app.route("/get/<fname>")
 def get_file(fname):
     store = Store()
-    upload_file = os.path.join(Config.upload_dir, fname)
+    upload_file = Config.upload_path(fname)
     if store.get_db_data_fname(fname) and os.path.exists(upload_file):
         return send_file(upload_file)#, mimetype="image")
 

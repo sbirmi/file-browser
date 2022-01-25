@@ -188,7 +188,7 @@ td {padding: 4px;}
 
          } else {
             // Has thumbnail
-            let content = ui_img(this.thumbnail,
+            let content = ui_img("thumbnails/" + this.thumbnail,
                                  this.fname + "\n" + this.exif["FileSize"] + " bytes",
                                  "ui_thumbnail_img");
             link.appendChild(content);

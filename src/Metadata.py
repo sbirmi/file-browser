@@ -23,9 +23,6 @@ from Utils import (
         trace,
 )
 
-
-METADATA_FILE = "00_metadata.sqlite3"
-
 class ExifApi():
     def get_info(self, path):
         cmd = ["exiftool", "-n", "-json", path]
@@ -51,7 +48,7 @@ class Metadata(Table):
         ]
 
 class Store():
-    def __init__(self, fname=METADATA_FILE):
+    def __init__(self, fname=Config.metadata_file):
         self.fname = fname
         self.conn = sqlite3.connect(self.fname)
         self.cursor = self.conn.cursor()

@@ -2,13 +2,22 @@
 import argparse
 from collections import defaultdict
 import os
+import sqlite3
 import subprocess
 import sys
 
 import Config
-from Metadata import Store
+import Metadata as MetadataModule
+from Storage import (
+        Bool,
+        Int,
+        Json,
+        Table,
+        Timestamp,
+        Txt,
+)
 
-store = Store()
+store = MetadataModule.Store()
 
 def delete_path(path):
     try:
@@ -113,10 +122,79 @@ def update_thumbnails(fnames):
     with store.batch():
         for entry in get_data(fnames):
             old_thumbnail_path = entry.thumbnail
-            thumbnail_path = Store.thumbnail(Config.upload_path(entry.fname), entry.fname)
+            thumbnail_path = MetadataModule.Store.thumbnail(Config.upload_path(entry.fname), entry.fname)
             if old_thumbnail_path != thumbnail_path and old_thumbnail_path:
                 delete_path(old_thumbnail_path)
             store.metadata.update({"thumbnail": thumbnail_path}, {"fname": entry.fname})
+
+# -----------------------------------
+# Map data to this new Metadata
+# format
+class Metadata(Table):
+    fields = [
+            Txt("fname"),
+            Txt("hash_sha256"),
+            Timestamp("time_db_added"),
+            Timestamp("time_db_updated"),
+            Bool("deleted"),
+            Txt("desc"),
+            Json("exif"), # exiftool -json data
+            Txt("mime_type"),
+            Timestamp("exif_img_create_date"),
+            Txt("thumbnail"),
+        ]
+
+def translate_row(old_row):
+    """Translate a row of data from the old format
+    MetadataModule.Metadata to Metadata table defined
+    in this file"""
+    if not old_row[-1]: # No thumbnail
+        return old_row
+    try:
+        new_row = tuple(list(old_row[:-1]) + [os.path.split(old_row[-1])[-1]])
+    except Exception as exc:
+        import pdb; pdb.set_trace()
+        pass
+    return new_row
+
+def map_data(new_file):
+    assert not os.path.exists(new_file), "New file must not exist"
+
+    old_file = Config.metadata_file
+    old_conn = sqlite3.connect(old_file)
+    old_cursor = old_conn.cursor()
+    old_table = MetadataModule.Metadata(old_cursor)
+    old_data = old_table.get('*')
+    old_cursor.close()
+    old_conn.close()
+
+    new_conn = sqlite3.connect(new_file)
+    new_cursor = new_conn.cursor()
+    new_table = Metadata(new_cursor)
+
+    new_columns = new_table.columns()
+    for idx, old_row in enumerate(old_data):
+        new_row = translate_row(old_row)
+        new_table.insert(**dict(zip(new_columns, new_row)))
+
+    new_conn.commit()
+    print("Copied {} rows".format(idx))
+
+def main(args):
+    if args.map_data:
+        assert not args.paths, "Can't specify upload file paths with --map-data"
+        map_data(args.map_data)
+        return
+
+    if args.duplicate_check:
+        assert not args.paths
+        duplicate_check()
+        return
+
+    if args.update_thumbnails:
+        fnames = [os.path.split(path)[1] for path in args.paths]
+        update_thumbnails(fnames)
+        return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -124,14 +202,7 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("-t", "--update-thumbnails",
                         action="store_true")
+    parser.add_argument("--map-data", metavar="NEW_SQLITE3_FILE")
     parser.add_argument("paths", nargs="*")
     args = parser.parse_args()
-
-    fnames = [os.path.split(path)[1] for path in args.paths]
-
-    if args.duplicate_check:
-        assert not args.paths
-        duplicate_check()
-
-    if args.update_thumbnails:
-        update_thumbnails(fnames)
+    main(args)

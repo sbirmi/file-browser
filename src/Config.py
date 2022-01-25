@@ -1,5 +1,6 @@
 import os
 
+metadata_file = "00_metadata.sqlite3"
 upload_dir = "./uploads"
 thumbnail_dir = "./thumbnails"
 

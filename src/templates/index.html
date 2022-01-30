@@ -275,7 +275,8 @@ td {padding: 4px;}
          let ui_search_feedback = document.getElementById("ui_search_feedback");
          del_all_children(ui_search_feedback);
          if (response [0] == "ERROR") {
-            ui_search_feedback.appendChild(ui_text(response[1]));
+            response.shift(0);
+            ui_search_feedback.appendChild(ui_text(response.join(" ")));
             return;
          }
 

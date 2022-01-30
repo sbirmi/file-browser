@@ -12,6 +12,8 @@ from werkzeug.utils import secure_filename
 
 import Config
 from Metadata import Store
+import Search
+from Utils import ErrorResponse
 
 app = Flask("file-browser")
 app.config['UPLOAD_FOLDER'] = Config.upload_dir
@@ -87,27 +89,28 @@ def db_data():
     """
     """
     args = request.args
-    search = str(args.get('search', ''))
+    search = Search.Search(str(args.get('search', '')))
+    if search.error_response:
+        return search.error_response.serialize()
     start = args.get('start', '0')
     count = args.get('count', '50')
 
     try:
         start = int(start)
     except:
-        return jsonify(["ERROR", "Bad start index"])
+        return ErrorResponse("Bad start index")
 
     try:
         count = int(count)
     except:
-        return jsonify(["ERROR", "Bad count"])
+        return ErrorResponse("Bad count")
 
     store = Store()
     filters = {"deleted": False}
     file_data = store.get_db_data(**filters)
 
-    if search:
-        file_data = [fd for fd in file_data if
-                     search in fd.file_ts]
+    if search.filtering:
+        file_data = [fd for fd in file_data if search.match(fd)]
 
     return jsonify(file_data[start:start + count])
 

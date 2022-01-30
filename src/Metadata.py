@@ -5,6 +5,7 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ExifUtils import from_exif_timestamp
 from HashLib import hash_sha256
 
 import Config
@@ -43,8 +44,9 @@ class Metadata(Table):
             Txt("desc"),
             Json("exif"), # exiftool -json data
             Txt("mime_type"),
-            Timestamp("exif_img_create_date"),
+            Timestamp("file_ts"), # timestamp for the file
             Txt("thumbnail"),
+            Json("tags"),
         ]
 
 class Store():
@@ -199,8 +201,13 @@ class Store():
                 desc="",
                 exif=exif,
                 mime_type=exif['MIMEType'],
-                exif_img_create_date=exif.get('CreateDate', exif.get("FileModifyDate")),
-                thumbnail=thumbnail_path)
+                file_ts = from_exif_timestamp(exif.get('DateTimeOriginal'),
+                                              exif.get('CreateDate'),
+                                              exif.get('TrackCreateDate'),
+                                              exif.get('SubSecCreateDate'),
+                                              exif.get('FileModifyDate')),
+                thumbnail=thumbnail_path,
+                tags=[])
         self.commit()
 
     def _delete(self, path, fname, existing_data):
@@ -226,8 +233,14 @@ class Store():
                  "deleted": False,
                  "exif": exif,
                  "mime_type": exif['MIMEType'],
-                 "exif_img_create_date": exif.get("CreateDate", exif.get("FileModifyDate")),
-                 "thumbnail_path": thumbnail_path},
+                 "file_ts": from_exif_timestamp(exif.get('DateTimeOriginal'),
+                                                exif.get('CreateDate'),
+                                                exif.get('TrackCreateDate'),
+                                                exif.get('SubSecCreateDate'),
+                                                exif.get('FileModifyDate')),
+                 "thumbnail_path": thumbnail_path,
+                 "tags": existing_data.tags,
+                },
                 {"fname": fname})
         self.commit()
 
@@ -268,7 +281,7 @@ class Store():
         if deleted is not None:
             where["deleted"] = deleted
         data = self.metadata.get('*', where=where,
-                                 order_by=["exif_img_create_date " +
+                                 order_by=["file_ts " +
                                            ("asc" if reverse else "desc")])
         return data
 

@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 import Config
+from ExifUtils import from_exif_timestamp
 import Metadata as MetadataModule
 from Storage import (
         Bool,
@@ -15,7 +16,7 @@ from Storage import (
         Table,
         Timestamp,
         Txt,
-)
+    )
 
 store = MetadataModule.Store()
 
@@ -140,21 +141,22 @@ class Metadata(Table):
             Txt("desc"),
             Json("exif"), # exiftool -json data
             Txt("mime_type"),
-            Timestamp("exif_img_create_date"),
+            Timestamp("file_ts"), # timestamp for the file
             Txt("thumbnail"),
+            Json("tags"),
         ]
 
 def translate_row(old_row):
     """Translate a row of data from the old format
     MetadataModule.Metadata to Metadata table defined
     in this file"""
-    if not old_row[-1]: # No thumbnail
-        return old_row
-    try:
-        new_row = tuple(list(old_row[:-1]) + [os.path.split(old_row[-1])[-1]])
-    except Exception as exc:
-        import pdb; pdb.set_trace()
-        pass
+    file_ts = from_exif_timestamp(old_row.exif.get('DateTimeOriginal'),
+                                  old_row.exif.get('CreateDate'),
+                                  old_row.exif.get('TrackCreateDate'),
+                                  old_row.exif.get('SubSecCreateDate'),
+                                  old_row.exif.get('FileModifyDate'),
+                                  )#old_row.exif_img_create_date)
+    new_row = list(old_row)[:-3] + [file_ts] + list(old_row)[-2:]
     return new_row
 
 def map_data(new_file):

@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from collections import defaultdict
+import itertools
 import json
 import os
 import sqlite3
@@ -7,6 +9,10 @@ import tempfile
 
 from ExifUtils import from_exif_timestamp
 from HashLib import hash_sha256
+from Utils import (
+        ErrorResponse,
+        OkayResponse,
+    )
 
 import Config
 from Storage import (
@@ -274,6 +280,40 @@ class Store():
             self._update(path, fname, exif, existing_data)
 
     # -------------------------------------------
+    # Tag manipulation
+
+    def update_tags(self, fnames, add_tags, remove_tags):
+        fnames = set(fnames)
+        add_tags = set(add_tags)
+        remove_tags = set(remove_tags)
+
+        # Input validation
+        if not fnames:
+            return ErrorResponse("No files specified")
+
+        if not add_tags and not remove_tags:
+            return ErrorResponse("No modification of tags requested")
+
+        for tag in itertools.chain(add_tags, remove_tags):
+            if not isinstance(tag, str):
+                return ErrorResponse("Invalid type for tag", str(tag))
+            if len(tag) < 3:
+                return ErrorResponse("Tag too short", str(tag))
+
+        files_by_tags = self.get_tags(fnames=fnames)
+        if isinstance(files_by_tags, ErrorResponse):
+            return files_by_tags
+
+        # TODO: Optimize this code to group writes
+        with self.batch():
+            for tags, sub_fnames  in files_by_tags.items():
+                new_tags = sorted(set(tags) - remove_tags | add_tags)
+                for fname in sub_fnames:
+                    self.metadata.update({"tags": new_tags}, {"fname": fname})
+
+        return OkayResponse()
+
+    # -------------------------------------------
     # Fetching metadata
 
     def get_db_data(self, deleted=None, reverse=False):
@@ -290,6 +330,27 @@ class Store():
         if data:
             return data[0]
         return None
+
+    def get_tags(self, fnames=None):
+        """
+        Arguments
+        ---------
+        fnames : set(str)
+            Only  return tags for filenames in fnames. Raises ErrorResponse when
+            fname is not found
+        """
+        # TODO: This should be optimized to filter by fnames
+        existing_data = self.metadata.get(['fname', 'tags'])
+        if fnames and not fnames.issubset(set(row.fname for row in existing_data)):
+            return ErrorResponse("Some files weren't found in store")
+
+        # Group files by tag combination to reduce number of writes
+        files_by_tags = defaultdict(list)
+        for row in existing_data:
+            if row.fname in fnames:
+                files_by_tags[tuple(sorted(row.tags))].append(row.fname)
+
+        return files_by_tags
 
 def update_metadata(files):
     with store.batch():

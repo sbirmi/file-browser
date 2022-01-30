@@ -120,3 +120,16 @@ def db_stats():
             Store.upload_dir_disk_usage(),
             store.metadata.count(where=filters)
         ])
+
+@app.route("/update-tags", methods=["POST"])
+def update_tags():
+    if request.method != "POST":
+        return jsonify(["ERROR", "GET not supported"])
+
+    data = request.get_json()
+    add_tags = data.get("add", [])
+    remove_tags = data.get("remove", [])
+    fnames = data.get("fnames", [])
+
+    store = Store()
+    return store.update_tags(fnames, add_tags, remove_tags).serialize()

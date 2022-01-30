@@ -97,9 +97,9 @@ class Table():
         group_by = group_by or []
         values = []
 
-        cols = ", ".join(cols)
+        cols_str = ", ".join(cols)
         table = self.name
-        cmd = "select {cols} from {table}"
+        cmd = "select {cols_str} from {table}"
         if where:
             where_unspec = " and ".join("%s = ?" % w for w in where)
             values = self.encoded_values(where)
@@ -114,12 +114,15 @@ class Table():
 
         self.execute(cmd.format(**locals()), values)
         # pylint: disable=not-callable
-        if cols == "*":
-            def deserialized_row(row):
-                return self.row_type(*[field.decode(val) for field, val in zip(self.fields, row)])
-            return [deserialized_row(row) for row in self.cursor.fetchall()]
+        def deserialized_row(row, row_type, fields):
+            return row_type(*[field.decode(val) for field, val in zip(fields, row)])
 
-        return self.cursor.fetchall()
+        if cols == "*":
+            return [deserialized_row(row, self.row_type, self.fields) for row in self.cursor.fetchall()]
+
+        row_type = namedtuple(self.name + "Row", cols)
+        col_fields = [field for field in self.fields if field.name in cols]
+        return [deserialized_row(row, row_type, col_fields) for row in self.cursor.fetchall()]
 
     def count(self, where=None, group_by=None):
         table = self.name

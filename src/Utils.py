@@ -1,4 +1,5 @@
 import datetime
+from flask import jsonify
 import subprocess
 
 def now():
@@ -32,3 +33,20 @@ def check_output(cmd):
         return subprocess.check_output(cmd).decode("utf8")
     except:
         return None
+
+# -----------------------------------------------
+# Flask responses
+
+class Response:
+    typ = None
+    def __init__(self, *extra):
+        self.extra = list(extra)
+
+    def serialize(self):
+        return jsonify([self.typ] + self.extra)
+
+class ErrorResponse(Response):
+    typ = "ERROR"
+
+class OkayResponse(Response):
+    typ = "OKAY"

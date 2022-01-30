@@ -164,6 +164,7 @@ td {padding: 4px;}
          this.exif = data[6]; //exif;
          this.file_ts = data[8]; //file_ts;
          this.thumbnail = data[9]; //thumbnail;
+         this.tags = data[10];
 
          // Sample input: 2022-01-03 20:19:03
          let dttm = this.file_ts.split(" ");
@@ -176,25 +177,45 @@ td {padding: 4px;}
 
          // Create UI
          this.ui = ui_div(null, "ui_tile");
-         let link = ui_link("/get/" + this.fname);
          if (this.thumbnail == null) {
             // No thumbnail
             let ext = this.fname.split(".").pop().substr(0, 6).toLowerCase();
             let content = ui_div(ui_text(ext));
             content.appendChild(ui_br());
             content.appendChild(ui_text(this.fname));
-            link.appendChild(content);
+            this.ui.appendChild(content);
 
          } else {
             // Has thumbnail
+            let tooltip = this.fname;
+            if (this.tags.length) {
+               tooltip += "\n" + this.tags.join(", ");
+            }
+            tooltip += "\n" + this.exif["FileSize"] + " bytes";
             let content = ui_img("thumbnails/" + this.thumbnail,
-                                 this.fname + "\n" + this.exif["FileSize"] + " bytes",
+                                 tooltip,
                                  "ui_thumbnail_img");
-            link.appendChild(content);
+            content.style.pontierEvents = "none";
             let span = ui_span("ui_tile_align_span");
-            this.ui.appendChild(span);
+            this.ui.appendChild(content);
          }
-         this.ui.appendChild(link);
+
+         this.ui.tile = this;
+         this.ui.addEventListener('click', function(ev) {
+               var target = ev.target;
+               while (target && !target.hasOwnProperty("tile")) {
+                     target = target.parentElement;
+               }
+               if (!target) {
+                  console.log("Not sure where the click happened");
+                  return;
+               }
+               target.tile.click_event();
+            });
+      }
+
+      click_event() {
+         window.open("/get/" + this.fname);
       }
 
       add_to_section(section) {
@@ -450,7 +471,7 @@ td {padding: 4px;}
    {% endif %}
 
    <!-- Bar above file listing -->
-   <table>
+   <table width=100%>
       <tr>
          <td id="ui_showingcount"></td>
          <td>/</td>

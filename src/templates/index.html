@@ -159,16 +159,15 @@ td {padding: 4px;}
    }
 
    class Tile {
-      //constructor(fname, exif, fimgtime, thumbnail) {
       constructor(data) {
          this.fname = data[0]; //fname;
          this.exif = data[6]; //exif;
-         this.fimgtime = data[8]; //fimgtime;
+         this.file_ts = data[8]; //file_ts;
          this.thumbnail = data[9]; //thumbnail;
 
-         // Sample input: 2022:01:03 20:19:03-08:00
-         let dttm = this.fimgtime.split(" ");
-         let dtargs = dttm[0].split(":");
+         // Sample input: 2022-01-03 20:19:03
+         let dttm = this.file_ts.split(" ");
+         let dtargs = dttm[0].split("-");
          this.file_date = new Date(dtargs[0] * 1, dtargs[1] * 1 - 1, dtargs[2] * 1);
 
          this.section = null;
@@ -235,7 +234,6 @@ td {padding: 4px;}
             }
             args_str += key + "=" + val;
          }
-         console.log("Requesting " + url + " " + args_str);
          this.xmlHttp.open("GET", url + "?" + args_str, true);
          this.xmlHttp.send(null);
       }

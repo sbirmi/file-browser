@@ -107,7 +107,7 @@ def db_data():
 
     if search:
         file_data = [fd for fd in file_data if
-                     search in str(fd.exif_img_create_date)]
+                     search in fd.file_ts]
 
     return jsonify(file_data[start:start + count])
 

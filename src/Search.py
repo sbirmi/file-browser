@@ -49,7 +49,6 @@ class SubstrParam(SearchParam):
         field_res = None
         for field in itertools.chain([row.file_ts], row.tags):
             res = match_field(field)
-            print("Matching", self.tok, "against", field, res)
             if res is False:
                 return False
             field_res = field_res or res

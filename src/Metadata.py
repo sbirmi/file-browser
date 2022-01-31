@@ -300,7 +300,7 @@ class Store():
             if len(tag) < 3:
                 return ErrorResponse("Tag too short", str(tag))
 
-        files_by_tags = self.get_tags(fnames=fnames)
+        files_by_tags = self.get_files_by_tags(fnames=fnames)
         if isinstance(files_by_tags, ErrorResponse):
             return files_by_tags
 
@@ -331,7 +331,7 @@ class Store():
             return data[0]
         return None
 
-    def get_tags(self, fnames=None):
+    def get_files_by_tags(self, fnames=None):
         """
         Arguments
         ---------
@@ -351,6 +351,19 @@ class Store():
                 files_by_tags[tuple(sorted(row.tags))].append(row.fname)
 
         return files_by_tags
+
+    def get_tags(self):
+        """
+        Returns sorted list of tags
+        """
+        # TODO: This should be optimized
+        existing_data = self.metadata.get(['fname', 'tags'])
+
+        tags = set()
+        for row in existing_data:
+            tags |= set(row.tags)
+
+        return sorted(tags)
 
 def update_metadata(files):
     with store.batch():

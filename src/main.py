@@ -136,3 +136,8 @@ def update_tags():
 
     store = Store()
     return store.update_tags(fnames, add_tags, remove_tags).serialize()
+
+@app.route("/tags", methods=["GET", "POST"])
+def get_tags():
+    store = Store()
+    return jsonify(store.get_tags())

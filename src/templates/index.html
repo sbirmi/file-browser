@@ -23,6 +23,12 @@ td {padding: 4px;}
 
 .ui_mode {font-size: 120%;}
 .ui_mode_details {font-size: 120%}
+
+.ui_tags_btn {font-size: 120%;}
+
+.ui_tag_search {width: 100%; font-size: 120%;}
+.ui_tag_suggestions {list-style: none; padding-left: 0; font-style: italic; margin-top: 0;}
+.ui_tag_selected {list-style: none; padding-left: 0;}
 </style>
 
 <script>
@@ -54,46 +60,66 @@ td {padding: 4px;}
 
    // -------------------------------------------
    // UI fns
-   function ui_link(url, cls=null) {
-      let node = document.createElement("a");
-      node.href = url;
+
+   function ui_element(typ, cls, handlers) {
+      let node = document.createElement(typ);
       if (cls) {
          node.classList.add(cls);
+      }
+      if (handlers) {
+         for (var event in handlers) {
+            node.addEventListener(event, handlers[event]);
+         }
       }
       return node;
    }
 
+   function ui_link(url, cls=null) {
+      let node = ui_element("a", cls);
+      node.href = url;
+      return node;
+   }
+
+   function ui_input_text(cls, handlers) {
+      return ui_element("input", cls, handlers);
+   }
+
+   function ui_unordered_list(cls=null) {
+      return ui_element("ul", cls);
+   }
+
+   function ui_list_item(cls=null, handlers) {
+      return ui_element("li", cls, handlers);
+   }
+
+   function ui_button(text, handler, cls=null) {
+      let node = ui_element("button", cls);
+      node.innerHTML = text;
+      node.addEventListener("click", handler);
+      return node;
+   }
+
    function ui_img(url, tooltip, cls=null) {
-      let img = document.createElement("img");
+      let img = ui_element("img", cls);
       img.src = url;
       img.title = tooltip;
-      if (cls) {
-         img.classList.add(cls);
-      }
       return img;
    }
 
-   function ui_div(content, cls=null) {
-      let node = document.createElement("div");
+   function ui_div(content, cls, handlers) {
+      let node = ui_element("div", cls, handlers);
       if (content) {
          node.appendChild(content);
-      }
-      if (cls) {
-         node.classList.add(cls);
       }
       return node;
    }
 
    function ui_br() {
-      return document.createElement("br");
+      return ui_element("br", null);
    }
 
    function ui_span(cls=null) {
-      let node = document.createElement("span");
-      if (cls) {
-         node.classList.add(cls);
-      }
-      return node;
+      return ui_element("span", cls);
    }
 
    function ui_text(txt) {
@@ -287,8 +313,17 @@ td {padding: 4px;}
       refresh() {
          del_all_children(this.ui_details);
          if (this.value_select()) {
-            this.ui_details.appendChild(ui_text(this._selected.size + " selected"));
+            let button = ui_button("Tags", this.handle_tags_btn, "ui_tags_btn");
+            this.ui_details.appendChild(button);
+            this.ui_details.appendChild(ui_text(" " + this._selected.size + " selected"));
          }
+      }
+
+      // ----------------------------------------
+      // Tags handling
+
+      handle_tags_btn(ev) {
+         console.log("click");
       }
 
       // ----------------------------------------
@@ -313,6 +348,119 @@ td {padding: 4px;}
          this.handle_selected();
       }
    }
+
+   class TagList {
+      constructor(parent_ui) {
+         this.parent_ui = parent_ui;
+         this.MAX_SUGGESTIONS = 5;
+
+         this._search_tag = "";   // contents of current tag search bar
+         this._suggestions = [];  // suggestions
+         this._selected = [];
+         this._all_tags = [];
+
+         this.ui = ui_div();
+         this.ui.appendChild(this.ui_search_box = ui_input_text("ui_tag_search",
+               {"input": this.search_tag_change,
+                "keydown": this.search_tag_keydown}));
+         this.ui_search_box.controller_obj = this;
+         this.ui.appendChild(this.ui_suggestions = ui_unordered_list("ui_tag_suggestions"));
+         this.ui.appendChild(this.ui_selected = ui_unordered_list("ui_tag_selected"));
+
+         this.parent_ui.appendChild(this.ui);
+      }
+
+      set_all_tags(tags) {
+         this._all_tags = tags;
+         this.refresh();
+      }
+
+      refresh() {
+         del_all_children(this.ui_suggestions);
+         del_all_children(this.ui_selected);
+
+         // Show selected words
+         for (var word of this._selected) {
+            let li = ui_list_item("ui_tag_selected", {"click": this.selection_click});
+            li.controller_obj = this;
+            li.controller_word = word;
+            li.appendChild(ui_text(word));
+            this.ui_selected.appendChild(li);
+         }
+
+         var count = 0;
+         // Show suggestions
+         for (var word of this._all_tags) {
+            if (this._selected.indexOf(word) > -1) {
+               continue;
+            }
+            if (word.indexOf(this._search_tag) == -1) {
+               continue;
+            }
+            let li = ui_list_item("ui_tag_suggestions", {"click": this.suggestion_click});
+            li.controller_obj = this;
+            li.controller_word = word;
+            li.appendChild(ui_text(word));
+            this.ui_suggestions.appendChild(li);
+            ++count;
+            if (count == this.MAX_SUGGESTIONS) {
+               break;
+            }
+         }
+      }
+
+      // APIs
+
+      suggestion_click(ev) {
+         var selected_word = this.controller_word;
+         var obj = this.controller_obj;
+         obj.selection_add(selected_word);
+      }
+
+      selection_click() {
+         var selected_word = this.controller_word;
+         var obj = this.controller_obj;
+         obj.selection_del(selected_word);
+      }
+
+      selection_add(word) {
+         if (word.length < 3) {
+            return;
+         }
+         if (this._selected.indexOf(word) > -1) {
+            return;
+         }
+         this._selected.push(word);
+         this._selected.sort();
+         this.refresh();
+      }
+
+      selection_del(word) {
+         let i = this._selected.indexOf(word);
+         if (i == -1) {
+            return;
+         }
+         this._selected.splice(i, 1);
+         this.refresh();
+      }
+
+      search_tag_change(ev) {
+         let obj = this.controller_obj;
+         obj._search_tag = obj.ui_search_box.value;
+         obj.refresh();
+      }
+
+      search_tag_keydown(ev) {
+         let obj = this.controller_obj;
+         const text = this.value;
+         if (ev.keyCode == 13 && text.length >= 3) {
+            obj.selection_add(text);
+         }
+      }
+   }
+
+   // -------------------------------------------
+   // Network handling
 
    class HttpRequest {
       constructor() {
@@ -457,6 +605,27 @@ td {padding: 4px;}
       }
    }
 
+   class AllTags extends HttpRequest {
+      constructor() {
+         super();
+         this.do_request();
+      }
+
+      handle_response_json(response) {
+         //    ["ERROR", <str:explanation>]
+         if (response[0] == "ERROR") {
+            console.log(response);
+            return;
+         }
+
+         add_tags_obj.set_all_tags(response);
+      }
+
+      do_request() {
+         super.do_request("/tags", {});
+      }
+   }
+
    // -------------------------------------------
    // Global variables
 
@@ -464,6 +633,8 @@ td {padding: 4px;}
    let current_query = null;
    let db_stats_query = null;
    let mode = null;
+   let add_tags_obj = null;
+   let all_tags_query = null;
 
    // -------------------------------------------
    // Entry points
@@ -472,6 +643,8 @@ td {padding: 4px;}
       store = new Store();
       db_stats_query = new DbStats();
       mode = new Mode();
+      add_tags_obj = new TagList(document.getElementById("ui_add_tags_pane"));
+      all_tags_query = new AllTags();
       search();
    }
 
@@ -553,6 +726,15 @@ td {padding: 4px;}
       {% endfor %}
    </ul>
    {% endif %}
+
+   <div id="ui_tags_pane">
+      <table width=100% border=1>
+         <tr>
+            <td id="ui_add_tags_pane"></td>
+            <td><input type="button" value="Submit"></td>
+         </tr>
+      </table>
+   </div>
 
    <!-- Bar above file listing -->
    <table width=100%>

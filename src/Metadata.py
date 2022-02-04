@@ -311,7 +311,10 @@ class Store():
                 for fname in sub_fnames:
                     self.metadata.update({"tags": new_tags}, {"fname": fname})
 
-        return OkayResponse()
+        msg = "%d files: added %d tags, removed %d tags" % (len(fnames),
+                                                            len(add_tags),
+                                                            len(remove_tags))
+        return OkayResponse(msg)
 
     # -------------------------------------------
     # Fetching metadata

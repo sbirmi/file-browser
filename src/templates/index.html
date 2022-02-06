@@ -28,7 +28,7 @@ td {padding: 4px;}
 
 .ui_tag_column {background-color: #a0a080; border-radius: 15px 0 0 15px; padding-left: 10px; font-size: 110%; font-weight: bold; padding-top: 10px;}
 .ui_tag_search_column {background-color: #c0c0a0; border-radius: 0 15px 15px 0; padding-right: 15px; padding-top: 10px; font-size: 110%; width: 320px;}
-.ui_tag_add_btn {font-size: 110%;}
+.ui_tag_add_btn {font-size: 110%; padding: 5px 5px 5px 5px;}
 .ui_tag_search {width: 100%; font-size: 120%;}
 .ui_tag_suggestions_container {list-style: none; padding-left: 0; background-color: white; border: solid black 0 1px 1px 1px; margin: 0 2px 2px 2px;}
 .ui_tag_suggestions {font-style: italic;}
@@ -303,15 +303,14 @@ td {padding: 4px;}
       constructor() {
          this.ui = document.getElementById("ui_mode");
          this.ui_details = document.getElementById("ui_mode_details");
-         this._value = null; // Browse, Select
-         this._selected = new Set();
+         this.ui_selected_count = document.getElementById("ui_selected_count");
+         this._value = null; // Browse, Modify
+         this._selected = new Set(); // Set of selected tiles
          this.handle_change();
-
-         this._show_tags_pane = false;
       }
 
       value_browse() { return this._value == "Browse"; }
-      value_select() { return this._value == "Select"; }
+      value_modify() { return this._value == "Modify"; }
 
       handle_change() {
          this._value = this.ui.value;
@@ -321,24 +320,16 @@ td {padding: 4px;}
 
       refresh() {
          // TODO: tags pane doesn't remain visible after switching to browse and then back to select mode
-         del_all_children(this.ui_details);
-         if (this.value_select()) {
-            let button = ui_button("Tags", this.handle_tags_btn, "ui_tags_btn");
-            this.ui_details.appendChild(button);
-            this.ui_details.appendChild(ui_text(" " + this._selected.size + " selected"));
+         if (this.value_modify()) {
+            document.getElementById("ui_tags_pane").style.display = "block";
+            this.ui_selected_count.style.display = "block";
+            del_all_children(this.ui_selected_count);
+            this.ui_selected_count.appendChild(ui_text(" " + this._selected.size + " selected"));
 
          } else {
             document.getElementById("ui_tags_pane").style.display = "none";
+            document.getElementById("ui_selected_count").style.display = "none";
          }
-      }
-
-      // ----------------------------------------
-      // Tags handling
-
-      handle_tags_btn(ev) {
-         this._show_tags_pane = !this._show_tags_pane;
-
-         document.getElementById("ui_tags_pane").style.display = this._show_tags_pane ? "block" : "none";
       }
 
       // ----------------------------------------
@@ -781,7 +772,8 @@ td {padding: 4px;}
 </head>
 
 <body onload="init();">
-   <table width=100% border=0px> <!-- top bar -->
+   <!-- top bar -->
+   <table width=100% border=0px>
       <tr>
          <td><h1>File Browser</h1></td>
          <td align=right> <!-- upload pane -->
@@ -810,31 +802,44 @@ td {padding: 4px;}
    </ul>
    {% endif %}
 
-   <!-- Bar above file listing -->
+   <!-- 2nd bar: the bar above file listing -->
    <table width=100%>
       <tr>
-         <td id="ui_showingcount"></td>
-         <td>/</td>
-         <td id="ui_filecount"></td>
-         <td id="ui_upload_dir_du"></td>
-         <td><input type="text" id="ui_search" class="ui_search" placeholder="search..." oninput="search();"><label id="ui_search_feedback" class="ui_search_feedback"></label></td>
-         <td id="ui_mode_details" class="ui_mode_details"></td>
-         <td align=right><select id="ui_mode" onchange="mode.handle_change()" class="ui_mode"><option>Browse</option><option>Select</option></select></td>
+         <td valign="top" id="ui_showingcount"></td>
+         <td valign="top">/</td>
+         <td valign="top" id="ui_filecount"></td>
+
+         <td valign="top" id="ui_upload_dir_du"></td>
+
+         <td valign="top"><input type="text" id="ui_search" class="ui_search" placeholder="search..." oninput="search();"><label id="ui_search_feedback" class="ui_search_feedback"></label></td>
+
+         <td id="ui_mode_details" class="ui_mode_details">
+            <span id="ui_tags_pane">
+               <table border=0 cellspacing=0>
+                  <tr>
+                     <td valign="top" align="right" class="ui_tag_column">
+                        Tags
+                        <br/>
+                        <input type="button" value="Add" class="ui_tag_add_btn" id="ui_add_tags_btn">
+                     </td>
+                     <td id="ui_add_tags_pane" valign="top" class="ui_tag_search_column"></td>
+                  </tr>
+               </table>
+            </span>
+
+
+         </td>
+
+         <td valign="top" id="ui_selected_count" class="ui_mode_details"></td>
+
+         <td valign="top" align=right>
+            <select id="ui_mode" onchange="mode.handle_change()" class="ui_mode">
+               <option>Browse</option>
+               <option>Modify</option>
+            </select>
+         </td>
       </tr>
    </table>
-
-   <div id="ui_tags_pane">
-      <table border=0 cellspacing=0>
-         <tr>
-            <td valign="top" align="right" class="ui_tag_column">
-               Tags
-               <br/><br/>
-               <input type="button" value="Add" class="ui_tag_add_btn" id="ui_add_tags_btn">
-            </td>
-            <td id="ui_add_tags_pane" valign="top" class="ui_tag_search_column"></td>
-         </tr>
-      </table>
-   </div>
 
    <!-- file listing -->
    <div width="100%" id="ui_file_list"></div>

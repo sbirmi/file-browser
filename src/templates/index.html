@@ -21,7 +21,8 @@ td {padding: 4px;}
 .ui_search {font-size: 120%; display: block; border: none; border-bottom: solid 1px #404040;}
 .ui_search_feedback {font-style: italic; text-color: #ff8080;}
 
-.ui_mode {font-size: 120%;}
+.ui_mode {font-size: 120%; padding: 5px 10px 5px 10px; background-color: #a0a080; border-radius: 10px; border: 0;}
+.ui_mode:hover {background-color: c0c0a0;}
 .ui_mode_details {font-size: 120%}
 
 .ui_tags_btn {font-size: 120%;}
@@ -304,17 +305,23 @@ td {padding: 4px;}
          this.ui = document.getElementById("ui_mode");
          this.ui_details = document.getElementById("ui_mode_details");
          this.ui_selected_count = document.getElementById("ui_selected_count");
-         this._value = null; // Browse, Modify
+
          this._selected = new Set(); // Set of selected tiles
+
+         this._modes = ["Browse", "Modify"];
+         this._mode_index = -1;
+
          this.handle_change();
       }
 
-      value_browse() { return this._value == "Browse"; }
-      value_modify() { return this._value == "Modify"; }
+      mode_name() { return this._modes[this._mode_index]; }
+      value_browse() { return this.mode_name() == "Browse"; }
+      value_modify() { return this.mode_name() == "Modify"; }
 
       handle_change() {
-         this._value = this.ui.value;
-         console.log("Mode: " + this.ui.value);
+         this._mode_index = (this._mode_index + 1) % this._modes.length;
+         this.ui.value = "Mode: " + this.mode_name();
+         console.log("Mode: " + this.mode_name());
          this.refresh();
       }
 
@@ -833,10 +840,7 @@ td {padding: 4px;}
          <td valign="top" id="ui_selected_count" class="ui_mode_details"></td>
 
          <td valign="top" align=right>
-            <select id="ui_mode" onchange="mode.handle_change()" class="ui_mode">
-               <option>Browse</option>
-               <option>Modify</option>
-            </select>
+            <input type="button" id="ui_mode" class="ui_mode" onclick="mode.handle_change()">
          </td>
       </tr>
    </table>

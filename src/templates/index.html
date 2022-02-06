@@ -14,11 +14,30 @@ td {padding: 4px;}
 .ui_date_banner {background-color: #e0e0e0; border-radius: 5px; border-left: solid 5px; font-size: 120%; margin-top: 10px; margin-left: 5px; padding-left: 5px;}
 
 .ui_tile {float: left; width: 250px; height: 250px; background-color: #e0e0e0; border-radius: 5px; margin: 5px; white-space: nowrap; text-align: center;}
+.ui_tile_selected {background-color: #ffffa0;}
 .ui_tile_align_span {display: inline-block; height: 100%; vertical-align: middle;}
 .ui_thumbnail_img {vertical-align: middle;}
 
 .ui_search {font-size: 120%; display: block; border: none; border-bottom: solid 1px #404040;}
 .ui_search_feedback {font-style: italic; text-color: #ff8080;}
+
+.ui_mode {font-size: 120%; padding: 5px 10px 5px 10px; background-color: #a0a080; border-radius: 10px; border: 0;}
+.ui_mode:hover {background-color: c0c0a0;}
+.ui_mode_details {font-size: 120%}
+
+.ui_tags_btn {font-size: 120%;}
+
+.ui_tag_column {background-color: #a0a080; border-radius: 15px 0 0 15px; padding-left: 10px; font-size: 110%; font-weight: bold; padding-top: 10px;}
+.ui_tag_search_column {background-color: #c0c0a0; border-radius: 0 15px 15px 0; padding-right: 15px; padding-top: 10px; font-size: 110%; width: 320px;}
+.ui_tag_add_btn {font-size: 110%; padding: 5px 5px 5px 5px;}
+.ui_tag_search {width: 100%; font-size: 120%;}
+.ui_tag_suggestions_container {list-style: none; padding-left: 0; background-color: white; border: solid black 0 1px 1px 1px; margin: 0 2px 2px 2px;}
+.ui_tag_suggestions {font-style: italic;}
+.ui_tag_suggestions:hover {text-decoration: underline;}
+.ui_tag_selected {list-style: none; padding-left: 0; background-color: orange; padding-left:10px; padding-right: 10px; border-radius: 10px; margin-right: 5px;}
+.ui_tag_selected:hover {background-color: #a08080;}
+
+.ui_msg_div {font-style: italic; font-weight: bold; padding: 3px;};
 </style>
 
 <script>
@@ -50,46 +69,66 @@ td {padding: 4px;}
 
    // -------------------------------------------
    // UI fns
-   function ui_link(url, cls=null) {
-      let node = document.createElement("a");
-      node.href = url;
+
+   function ui_element(typ, cls, handlers) {
+      let node = document.createElement(typ);
       if (cls) {
          node.classList.add(cls);
+      }
+      if (handlers) {
+         for (var event in handlers) {
+            node.addEventListener(event, handlers[event]);
+         }
       }
       return node;
    }
 
+   function ui_link(url, cls=null) {
+      let node = ui_element("a", cls);
+      node.href = url;
+      return node;
+   }
+
+   function ui_input_text(cls, handlers) {
+      return ui_element("input", cls, handlers);
+   }
+
+   function ui_unordered_list(cls=null) {
+      return ui_element("ul", cls);
+   }
+
+   function ui_list_item(cls=null, handlers) {
+      return ui_element("li", cls, handlers);
+   }
+
+   function ui_button(text, handler, cls=null) {
+      let node = ui_element("button", cls);
+      node.innerHTML = text;
+      node.addEventListener("click", handler);
+      return node;
+   }
+
    function ui_img(url, tooltip, cls=null) {
-      let img = document.createElement("img");
+      let img = ui_element("img", cls);
       img.src = url;
       img.title = tooltip;
-      if (cls) {
-         img.classList.add(cls);
-      }
       return img;
    }
 
-   function ui_div(content, cls=null) {
-      let node = document.createElement("div");
+   function ui_div(content, cls, handlers) {
+      let node = ui_element("div", cls, handlers);
       if (content) {
          node.appendChild(content);
-      }
-      if (cls) {
-         node.classList.add(cls);
       }
       return node;
    }
 
    function ui_br() {
-      return document.createElement("br");
+      return ui_element("br", null);
    }
 
-   function ui_span(cls=null) {
-      let node = document.createElement("span");
-      if (cls) {
-         node.classList.add(cls);
-      }
-      return node;
+   function ui_span(cls, handlers) {
+      return ui_element("span", cls, handlers);
    }
 
    function ui_text(txt) {
@@ -120,6 +159,7 @@ td {padding: 4px;}
          let ui_showing_count = document.getElementById("ui_showingcount");
          del_all_children(ui_showing_count);
          ui_showing_count.appendChild(ui_div(ui_text(store.count())));
+         mode.clear_selected();
       }
 
       new_tile(tile) {
@@ -174,6 +214,7 @@ td {padding: 4px;}
          this.section = null;
 
          this._visible = null;
+         this._selected = false;
 
          // Create UI
          this.ui = ui_div(null, "ui_tile");
@@ -215,7 +256,11 @@ td {padding: 4px;}
       }
 
       click_event() {
-         window.open("/get/" + this.fname);
+         if (mode.value_browse()) {
+            window.open("/get/" + this.fname);
+         } else {
+            this.toggle_selection();
+         }
       }
 
       add_to_section(section) {
@@ -230,10 +275,234 @@ td {padding: 4px;}
       visibility_toggle() {
          this.visibility_set(!this._visible);
       }
+
+      // ----------------------------------------
+      // Selection handling
+
+      toggle_selection() {
+         this._selected = !this._selected;
+         this.handle_selected();
+      }
+
+      clear_selection() {
+         this._selected = false;
+         this.handle_selected();
+      }
+
+      handle_selected() {
+         if (this._selected) {
+            this.ui.classList.add("ui_tile_selected");
+            mode.selection_add(this);
+         } else {
+            this.ui.classList.remove("ui_tile_selected");
+            mode.selection_remove(this);
+         }
+      }
    }
 
-   class HttpRequest {
+   class Mode {
       constructor() {
+         this.ui = document.getElementById("ui_mode");
+         this.ui_details = document.getElementById("ui_mode_details");
+         this.ui_selected_count = document.getElementById("ui_selected_count");
+
+         this._selected = new Set(); // Set of selected tiles
+
+         this._modes = ["Browse", "Modify"];
+         this._mode_index = -1;
+
+         this.handle_change();
+      }
+
+      mode_name() { return this._modes[this._mode_index]; }
+      value_browse() { return this.mode_name() == "Browse"; }
+      value_modify() { return this.mode_name() == "Modify"; }
+
+      handle_change() {
+         this._mode_index = (this._mode_index + 1) % this._modes.length;
+         this.ui.value = "Mode: " + this.mode_name();
+         console.log("Mode: " + this.mode_name());
+         this.refresh();
+      }
+
+      refresh() {
+         // TODO: tags pane doesn't remain visible after switching to browse and then back to select mode
+         if (this.value_modify()) {
+            document.getElementById("ui_tags_pane").style.display = "block";
+            this.ui_selected_count.style.display = "block";
+            del_all_children(this.ui_selected_count);
+            this.ui_selected_count.appendChild(ui_text(" " + this._selected.size + " selected"));
+
+         } else {
+            document.getElementById("ui_tags_pane").style.display = "none";
+            document.getElementById("ui_selected_count").style.display = "none";
+         }
+      }
+
+      // ----------------------------------------
+      // Selection handling
+
+      handle_selected() {
+         this.refresh();
+      }
+
+      clear_selected() {
+         this._selected = new Set();
+         this.handle_selected();
+      }
+
+      selection_add(tile) {
+         this._selected.add(tile);
+         this.handle_selected();
+      }
+
+      selection_remove(tile) {
+         this._selected.delete(tile);
+         this.handle_selected();
+      }
+   }
+
+   class TagList {
+      constructor(parent_ui) {
+         this.parent_ui = parent_ui;
+         this.MAX_SUGGESTIONS = 5;
+
+         // Register add button handler
+         document.getElementById("ui_add_tags_btn").onclick = this.add_tags_btn_click;
+
+         this._search_tag = "";   // contents of current tag search bar
+         this._selected = [];
+         this._all_tags = [];
+
+         this._add_query = null;
+
+         this.ui = ui_div();
+         this.ui.appendChild(this.ui_search_box = ui_input_text("ui_tag_search",
+               {"input": this.search_tag_change,
+                "keydown": this.search_tag_keydown}));
+         this.ui_search_box.controller_obj = this;
+         this.ui.appendChild(this.ui_suggestions = ui_unordered_list("ui_tag_suggestions_container"));
+         this.ui.appendChild(this.ui_selected = ui_div(null));
+         this.ui.appendChild(this.ui_msg_window = ui_div(null));
+
+         this.parent_ui.appendChild(this.ui);
+      }
+
+      reset() {
+         this._selected = [];
+         this.refresh();
+      }
+
+      set_all_tags(tags) {
+         this._all_tags = tags;
+         this.refresh();
+      }
+
+      refresh() {
+         del_all_children(this.ui_suggestions);
+         del_all_children(this.ui_selected);
+
+         // Show selected words
+         for (var word of this._selected) {
+            let li = ui_span("ui_tag_selected", {"click": this.selection_click});
+            li.controller_obj = this;
+            li.controller_word = word;
+            li.appendChild(ui_text(word));
+            this.ui_selected.appendChild(li);
+         }
+
+         var count = 0;
+         // Show suggestions
+         for (var word of this._all_tags) {
+            if (this._selected.indexOf(word) > -1) {
+               continue;
+            }
+            if (word.indexOf(this._search_tag) == -1) {
+               continue;
+            }
+            let li = ui_list_item("ui_tag_suggestions", {"click": this.suggestion_click});
+            li.controller_obj = this;
+            li.controller_word = word;
+            li.appendChild(ui_text(word));
+            this.ui_suggestions.appendChild(li);
+            ++count;
+            if (count == this.MAX_SUGGESTIONS) {
+               break;
+            }
+         }
+      }
+
+      add_tags_btn_click() {
+         this._add_query = new AddTags();
+      }
+
+      // APIs
+
+      suggestion_click(ev) {
+         var selected_word = this.controller_word;
+         var obj = this.controller_obj;
+         obj.selection_add(selected_word);
+         obj.ui_search_box.value = "";
+         obj.search_tag_change_impl();
+      }
+
+      selection_click() {
+         var selected_word = this.controller_word;
+         var obj = this.controller_obj;
+         obj.selection_del(selected_word);
+      }
+
+      selection_add(word) {
+         if (word.length < 3) {
+            return;
+         }
+         if (this._selected.indexOf(word) > -1) {
+            return;
+         }
+         this._selected.push(word);
+         this._selected.sort();
+         this.refresh();
+      }
+
+      selection_del(word) {
+         let i = this._selected.indexOf(word);
+         if (i == -1) {
+            return;
+         }
+         this._selected.splice(i, 1);
+         this.refresh();
+      }
+
+
+      search_tag_change_impl() {
+         this._search_tag = this.ui_search_box.value;
+         this.refresh();
+         this.ui_search_box.focus();
+      }
+
+      search_tag_change(ev) {
+         let obj = this.controller_obj;
+         obj.search_tag_change_impl();
+      }
+
+      search_tag_keydown(ev) {
+         let obj = this.controller_obj;
+         const text = this.value;
+         if (ev.keyCode == 13 && text.length >= 3) {
+            obj.selection_add(text);
+
+            this.value = "";
+            obj.search_tag_change_impl();
+         }
+      }
+   }
+
+   // -------------------------------------------
+   // Network handling
+
+   class HttpRequest {
+      constructor(method) {
+         this.method = method ? method : "GET";
          this.xmlHttp = new XMLHttpRequest();
          this.xmlHttp.querier_ = this;
          this.xmlHttp.onreadystatechange = this.onreadystatechange;
@@ -247,16 +516,21 @@ td {padding: 4px;}
       }
 
       do_request(url, args) {
-         let args_str = "";
-         for (let key in args) {
-            let val = args[key];
-            if (args_str) {
-               args_str += "&";
+         if (this.method == "GET") {
+            let args_str = "";
+            for (let key in args) {
+               let val = args[key];
+               if (args_str) {
+                  args_str += "&";
+               }
+               args_str += key + "=" + val;
             }
-            args_str += key + "=" + val;
+            this.xmlHttp.open("GET", url + "?" + args_str, true);
+            this.xmlHttp.send(null);
+         } else {
+            this.xmlHttp.open("POST", url, true);
+            this.xmlHttp.send(JSON.stringify(args));
          }
-         this.xmlHttp.open("GET", url + "?" + args_str, true);
-         this.xmlHttp.send(null);
       }
 
       handle_response_json(response) {
@@ -375,12 +649,77 @@ td {padding: 4px;}
       }
    }
 
+   class AllTags extends HttpRequest {
+      constructor() {
+         super();
+         this.do_request();
+      }
+
+      handle_response_json(response) {
+         //    ["ERROR", <str:explanation>]
+         if (response[0] == "ERROR") {
+            console.log(response);
+            return;
+         }
+
+         add_tags_obj.set_all_tags(response);
+      }
+
+      do_request() {
+         super.do_request("/tags", {});
+      }
+   }
+
+   class AddTags extends HttpRequest {
+      constructor() {
+         super("POST");
+         this.do_request();
+      }
+
+      handle_response_json(response) {
+         //    ["ERROR", <str:explanation>]
+         //    ["OKAY", <str:explanation>]
+
+         obj_id_allocator++;
+
+         //del_all_children(add_tags_obj.ui_msg_window);
+         let msg_div = ui_div(ui_text(response[1]), "ui_msg_div");
+         let obj_name = "msg_window_" + obj_id_allocator;
+         msg_div.setAttribute("id", obj_name);
+         setTimeout(function() {
+            document.getElementById(obj_name).remove();
+            }, 3000);
+         add_tags_obj.ui_msg_window.appendChild(msg_div);
+
+         if (response[0] == "OKAY") {
+            // Success
+            add_tags_obj.reset();
+            all_tags_query = new AllTags();
+
+            search.last_text = null; // hack
+            search();
+         }
+      }
+
+      do_request() {
+         let data = {"add": add_tags_obj._selected, "fnames": []};
+         for (let tile of mode._selected) {
+            data["fnames"].push(tile.fname);
+         }
+         super.do_request("/update-tags", data);
+      }
+   }
+
    // -------------------------------------------
    // Global variables
 
    let store = null;
    let current_query = null;
    let db_stats_query = null;
+   let mode = null;
+   let add_tags_obj = null;
+   let all_tags_query = null;
+   let obj_id_allocator = 0;
 
    // -------------------------------------------
    // Entry points
@@ -388,6 +727,9 @@ td {padding: 4px;}
    function init() {
       store = new Store();
       db_stats_query = new DbStats();
+      add_tags_obj = new TagList(document.getElementById("ui_add_tags_pane"));
+      mode = new Mode();
+      all_tags_query = new AllTags();
       search();
    }
 
@@ -403,10 +745,6 @@ td {padding: 4px;}
    }
 
    function search() {
-      if (search.last_text == null) {
-         search.last_text = null;
-      }
-
       let ui_search = document.getElementById("ui_search");
       let search_text = ui_search.value;
       let last_text = search.last_text;
@@ -441,7 +779,8 @@ td {padding: 4px;}
 </head>
 
 <body onload="init();">
-   <table width=100% border=0px> <!-- top bar -->
+   <!-- top bar -->
+   <table width=100% border=0px>
       <tr>
          <td><h1>File Browser</h1></td>
          <td align=right> <!-- upload pane -->
@@ -470,14 +809,39 @@ td {padding: 4px;}
    </ul>
    {% endif %}
 
-   <!-- Bar above file listing -->
+   <!-- 2nd bar: the bar above file listing -->
    <table width=100%>
       <tr>
-         <td id="ui_showingcount"></td>
-         <td>/</td>
-         <td id="ui_filecount"></td>
-         <td id="ui_upload_dir_du"></td>
-         <td><input type="text" id="ui_search" class="ui_search" placeholder="search..." oninput="search();"><label id="ui_search_feedback" class="ui_search_feedback"></label></td>
+         <td valign="top" id="ui_showingcount"></td>
+         <td valign="top">/</td>
+         <td valign="top" id="ui_filecount"></td>
+
+         <td valign="top" id="ui_upload_dir_du"></td>
+
+         <td valign="top"><input type="text" id="ui_search" class="ui_search" placeholder="search..." oninput="search();"><label id="ui_search_feedback" class="ui_search_feedback"></label></td>
+
+         <td id="ui_mode_details" class="ui_mode_details">
+            <span id="ui_tags_pane">
+               <table border=0 cellspacing=0>
+                  <tr>
+                     <td valign="top" align="right" class="ui_tag_column">
+                        Tags
+                        <br/>
+                        <input type="button" value="Add" class="ui_tag_add_btn" id="ui_add_tags_btn">
+                     </td>
+                     <td id="ui_add_tags_pane" valign="top" class="ui_tag_search_column"></td>
+                  </tr>
+               </table>
+            </span>
+
+
+         </td>
+
+         <td valign="top" id="ui_selected_count" class="ui_mode_details"></td>
+
+         <td valign="top" align=right>
+            <input type="button" id="ui_mode" class="ui_mode" onclick="mode.handle_change()">
+         </td>
       </tr>
    </table>
 

@@ -6,6 +6,7 @@ from flask import (
         request,
         send_file,
 )
+import json
 import os
 import re
 from werkzeug.utils import secure_filename
@@ -129,7 +130,11 @@ def update_tags():
     if request.method != "POST":
         return jsonify(["ERROR", "GET not supported"])
 
-    data = request.get_json()
+    try:
+        data = json.loads(request.get_data())
+    except:
+        return ErrorResponse("Invalid JSON request").serialize()
+
     add_tags = data.get("add", [])
     remove_tags = data.get("remove", [])
     fnames = data.get("fnames", [])

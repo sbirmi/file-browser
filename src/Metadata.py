@@ -146,12 +146,18 @@ class Store():
 
         # try creating a thumbnail
         if "image" in mime_type:
-            return Store.resize_image(path, thumbnail_path, size)
+            dstpath = Store.resize_image(path, thumbnail_path, size)
+            if not dstpath:
+                return dstpath
+            return os.path.split(dstpath)[-1]
 
         elif "video" in mime_type:
             tmpframe = Store.video_frame(path)
             duration = Store.video_duration(path)
-            return Store.resize_image(tmpframe, thumbnail_path, size, text=duration)
+            dstpath = Store.resize_image(tmpframe, thumbnail_path, size, text=duration)
+            if not dstpath:
+                return dstpath
+            return os.path.split(dstpath)[-1]
 
         return None
 

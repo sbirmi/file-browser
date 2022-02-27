@@ -54,3 +54,4 @@ optional arguments:
   -t, --update-thumbnails
 $
 ```
+
